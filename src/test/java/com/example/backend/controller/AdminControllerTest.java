@@ -84,7 +84,7 @@ class AdminControllerTest {
         // when & then
         mockMvc.perform(get("/api/admin/stats"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType("application/json;charset=UTF-8"))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.totalUsers").value(100))
                 .andExpect(jsonPath("$.data.totalPosts").value(200));
