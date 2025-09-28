@@ -42,10 +42,10 @@ public class SocialAuthController {
     private final DailyMetricsService dailyMetricsService; //카운트
 
     // 프론트 리다이렉트 베이스 URL (환경변수로 대체 가능)
-    @Value("${app.front.success-url:http://localhost:3000/auth/success?provider=}")
+    @Value("${app.front.success-url}")
     private String successRedirectBase;
 
-    @Value("${app.front.error-url:http://localhost:3000/auth/error?provider=}")
+    @Value("${app.front.error-url}")
     private String errorRedirectBase;
 
     // ============== 로그인 시작(인가 URL) ==============
