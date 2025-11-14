@@ -80,37 +80,39 @@ Start([사용자 요청]) --> CheckAuth{JWT Token<br/>존재?}
 
 ```mermaid
 flowchart TD
-    Req["HTTP Request 도착"] -->|DispatcherServlet| Filter["SecurityFilter<br/>+ JwtAuthFilter"]
+    Start["Request Arrives"]
     
-    Filter -->|유효한 JWT| Controller["@RestController<br/>메서드"]
-    Filter -->|JWT 없음/만료| SecurityErr["🔴 Authentication<br/>Exception"]
+    Start -->|SecurityFilter| Filter["JWT Auth Filter"]
     
-    Controller -->|정상 실행| Service["비즈니스 로직"]
-    Controller -->|@Validated 검증 실패| ValidationErr["🟡 MethodArgumentNotValid"]
+    Filter -->|Valid JWT| Controller["RestController Method"]
+    Filter -->|No JWT| SecurityErr["Authentication Exception"]
     
-    Service -->|정상 완료| Return["Response 반환"]
-    Service -->|리소스 없음| NotFoundErr["🔴 NotFoundException"]
-    Service -->|권한 없음| ForbiddenErr["🔴 ForbiddenException"]
-    Service -->|입력값 오류| BadReqErr["🔴 BadRequestException"]
-    Service -->|외부 API 오류| ExtErr["🔴 ExternalServiceException"]
-    Service -->|중복 값| ConflictErr["🔴 ConflictException"]
+    Controller -->|Normal| Service["Business Logic"]
+    Controller -->|Validation Failed| ValidationErr["MethodArgumentNotValid"]
     
-    SecurityErr -->|@ExceptionHandler| AdviceHandle1["ProblemDetailsAdvice<br/>.handle...()"]
-    ValidationErr -->|@ExceptionHandler| AdviceHandle2["ValidationErrorProcessor<br/>.process()"]
-    NotFoundErr -->|@ExceptionHandler| AdviceHandle3["ProblemDetailFactory<br/>.createProblemDetail()"]
-    ForbiddenErr -->|@ExceptionHandler| AdviceHandle3
-    BadReqErr -->|@ExceptionHandler| AdviceHandle3
-    ExtErr -->|@ExceptionHandler| AdviceHandle3
-    ConflictErr -->|@ExceptionHandler| AdviceHandle3
+    Service -->|Success| Return["Response OK"]
+    Service -->|Not Found| NotFoundErr["NotFoundException"]
+    Service -->|No Access| ForbiddenErr["ForbiddenException"]
+    Service -->|Bad Input| BadReqErr["BadRequestException"]
+    Service -->|External Error| ExtErr["ExternalServiceException"]
+    Service -->|Duplicate| ConflictErr["ConflictException"]
     
-    AdviceHandle1 -->|RFC 7807 Format| ProblemDetail["ProblemDetail<br/>(application/problem+json)"]
-    AdviceHandle2 -->|ValidationError[]| ProblemDetail
+    SecurityErr -->|Handler| AdviceHandle1["ProblemDetailsAdvice"]
+    ValidationErr -->|Handler| AdviceHandle2["ValidationProcessor"]
+    NotFoundErr -->|Handler| AdviceHandle3["ProblemDetailFactory"]
+    ForbiddenErr -->|Handler| AdviceHandle3
+    BadReqErr -->|Handler| AdviceHandle3
+    ExtErr -->|Handler| AdviceHandle3
+    ConflictErr -->|Handler| AdviceHandle3
+    
+    AdviceHandle1 -->|RFC7807| ProblemDetail["ProblemDetail JSON"]
+    AdviceHandle2 -->|ValidationError| ProblemDetail
     AdviceHandle3 -->|ProblemDetail| ProblemDetail
     
-    ProblemDetail -->|status + type + title + detail| Client["📡 Client"]
+    ProblemDetail -->|Response| Client["Client Response"]
     Return -->|ResponseEntity| Client
     
-    style Req fill:#e3f2fd
+    style Start fill:#e3f2fd
     style Client fill:#e3f2fd
     style SecurityErr fill:#ffcdd2
     style ValidationErr fill:#fff9c4

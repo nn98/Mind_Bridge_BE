@@ -4,7 +4,6 @@ erDiagram
     USER ||--o{ POST : creates
     USER ||--o{ EMOTION : logs
     CHAT_SESSION ||--o{ CHAT_MESSAGE : contains
-    POST ||--o{ COMMENT : has
     USER ||--o{ DAILY_METRICS : generates
     
     USER {
