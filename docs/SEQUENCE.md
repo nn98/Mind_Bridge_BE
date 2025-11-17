@@ -208,7 +208,7 @@ graph LR
     B -->|SessionRequest/MessageRequest| D
     
     C -->|Auth Token 검증| D
-    D -->|@PreAuthorize 검사| D
+    D -->|"@PreAuthorize 검사"| D
     D -->|Call| E
     E -->|Query/Command| F
     F -->|SQL| H
@@ -228,4 +228,5 @@ graph LR
     style SpringBoot fill:#f3e5f5
     style Database fill:#e8f5e9
     style External fill:#fce4ec
+
 ```
