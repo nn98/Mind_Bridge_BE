@@ -294,6 +294,20 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
+	@DisplayName("오늘 통계 행이 없을 때 0으로 채워서 반환")
+	void getTodayMetrics_noRow_returnsZeroes() {
+		LocalDate today = LocalDate.now();
+		given(dailyMetricsRepository.findById(today)).willReturn(Optional.empty());
+
+		DailyMetricPoint result = adminQueryService.getTodayMetrics();
+
+		assertThat(result).isNotNull();
+		assertThat(result.getDate()).isEqualTo(today);
+		assertThat(result.getChatCount()).isZero();
+		assertThat(result.getVisitCount()).isZero();
+	}
+
+	@Test
 	@DisplayName("날짜 범위 통계 조회")
 	void getDailyRange() {
 		LocalDate start = LocalDate.now().minusDays(7);
@@ -305,6 +319,19 @@ class AdminQueryServiceTest {
 
 		assertThat(result).hasSize(1);
 		assertDailyMetricPoint(result.get(0), testMetrics.getStatDate(), DEFAULT_CHAT_COUNT, DEFAULT_LOGIN_COUNT);
+	}
+
+	@Test
+	@DisplayName("날짜 범위 통계 행이 없을 때 빈 리스트 반환")
+	void getDailyRange_noData_returnsEmptyList() {
+		LocalDate start = LocalDate.now().minusDays(7);
+		LocalDate end = LocalDate.now();
+		given(dailyMetricsRepository.findAllByStatDateBetween(start, end))
+				.willReturn(List.of());
+
+		List<DailyMetricPoint> result = adminQueryService.getDailyRange(start, end);
+
+		assertThat(result).isEmpty();
 	}
 
 	private UserEntity createUser(Long id, String email, String nickname, String role) {
