@@ -1,5 +1,6 @@
 package com.example.backend.service;
 
+import java.security.SecureRandom;
 import java.util.Optional;
 import java.util.Random;
 
@@ -36,6 +37,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final JavaMailSender mailSender;
     private final DailyMetricsService dailyMetricsService;
+    private final Random random = new SecureRandom();
 
     @Transactional
     public void loginAndSetCookie(LoginRequest request, HttpServletResponse response) {
@@ -142,15 +144,11 @@ public class AuthService {
     }
 
     private String generateTempPassword() {
-        int length = 12;
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-        StringBuilder sb = new StringBuilder();
-        Random random = new Random();
-
-        for (int i = 0; i < length; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
+        StringBuilder sb = new StringBuilder(TEMP_PASSWORD_LENGTH);
+        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
+            int index = random.nextInt(TEMP_PASSWORD_CHARS.length());
+            sb.append(TEMP_PASSWORD_CHARS.charAt(index));
         }
-
         return sb.toString();
     }
 
