@@ -51,16 +51,8 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public String findAndMaskUserEmail(FindIdRequest request) {
-        Optional<UserEntity> optionalUser = userRepository
-            .findByPhoneNumberAndNickname(request.getPhoneNumber(), request.getNickname());
-
-        if (optionalUser.isEmpty()) {
-            log.warn("아이디 찾기 실패 - 전화번호: {}, 닉네임: {}",
-                request.getPhoneNumber(), request.getNickname());
-            throw new NotFoundException("일치하는 회원 정보를 찾을 수 없습니다.");
-        }
-
-        String email = optionalUser.get().getEmail();
+        UserEntity user = findUserByPhoneAndNickname(request);
+        String email = user.getEmail();
         String maskedEmail = maskEmail(email);
         log.info("아이디 찾기 성공: {}", email);
         return maskedEmail;
@@ -114,6 +106,19 @@ public class AuthService {
         updateLastLogin(email);
         dailyMetricsService.increaseUserCount();
         log.info("로그인 성공: {}", email);
+    }
+
+    private UserEntity findUserByPhoneAndNickname(FindIdRequest request) {
+        Optional<UserEntity> optionalUser = userRepository
+                .findByPhoneNumberAndNickname(request.getPhoneNumber(), request.getNickname());
+
+        if (optionalUser.isEmpty()) {
+            log.warn("아이디 찾기 실패 - 전화번호: {}, 닉네임: {}",
+                    request.getPhoneNumber(), request.getNickname());
+            throw new NotFoundException("일치하는 회원 정보를 찾을 수 없습니다.");
+        }
+
+        return optionalUser.get();
     }
 
     private UserEntity authenticateUser(LoginRequest request) {
