@@ -179,6 +179,16 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
+	@DisplayName("존재하지 않는 사용자 조회 시 예외")
+	void getUserDetailNotFoundException() {
+		given(userRepository.findById(999L)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> adminQueryService.getUserDetail(999L))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("User not found");
+	}
+
+	@Test
 	@DisplayName("게시글 검색")
 	void findPosts() {
 		AdminPostSearchRequest request = AdminPostSearchRequest.builder()
@@ -198,6 +208,23 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
+	@DisplayName("게시글 검색 결과가 없을 때 빈 페이지를 반환")
+	void findPosts_emptyResult() {
+		AdminPostSearchRequest request = AdminPostSearchRequest.builder()
+				.q("없는제목")
+				.visibility("public")
+				.build();
+		Page<PostEntity> emptyPage = Page.empty();
+
+		given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
+				.willReturn(emptyPage);
+
+		Page<AdminPostRow> result = adminQueryService.findPosts(request, PageRequest.of(0, 20));
+
+		assertThat(result.getContent()).isEmpty();
+	}
+
+	@Test
 	@DisplayName("게시글 상세 조회")
 	void getPostDetail() {
 		given(postRepository.findById(DEFAULT_POST_ID)).willReturn(Optional.of(testPost));
@@ -206,6 +233,16 @@ class AdminQueryServiceTest {
 		AdminPostDetail result = adminQueryService.getPostDetail(DEFAULT_POST_ID);
 
 		assertAdminPostDetailDefault(result);
+	}
+
+	@Test
+	@DisplayName("존재하지 않는 게시글 상세 조회 시 예외")
+	void getPostDetailNotFoundException() {
+		given(postRepository.findById(999L)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> adminQueryService.getPostDetail(999L))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("Post not found");
 	}
 
 	@Test
@@ -220,11 +257,29 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
+	@DisplayName("존재하지 않는 게시글 공개설정 수정 시 예외")
+	void updatePostVisibilityNotFoundException() {
+		given(postRepository.findById(999L)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> adminQueryService.updatePostVisibility(999L, "private"))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("Post not found");
+	}
+
+	@Test
 	@DisplayName("게시글 삭제")
 	void deletePost() {
 		adminQueryService.deletePost(DEFAULT_POST_ID, "테스트 삭제");
 
 		verify(postRepository).deleteById(DEFAULT_POST_ID);
+	}
+
+	@Test
+	@DisplayName("존재하지 않는 게시글 삭제 시 예외")
+	void deletePostyNotFoundException() {
+		assertThatThrownBy(() -> adminQueryService.deletePost(999L, "테스트 삭제"))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("Post not found");
 	}
 
 	@Test
@@ -250,16 +305,6 @@ class AdminQueryServiceTest {
 
 		assertThat(result).hasSize(1);
 		assertDailyMetricPoint(result.get(0), testMetrics.getStatDate(), DEFAULT_CHAT_COUNT, DEFAULT_LOGIN_COUNT);
-	}
-
-	@Test
-	@DisplayName("존재하지 않는 사용자 조회 시 예외")
-	void getUserDetailNotFoundException() {
-		given(userRepository.findById(999L)).willReturn(Optional.empty());
-
-		assertThatThrownBy(() -> adminQueryService.getUserDetail(999L))
-				.isInstanceOf(NotFoundException.class)
-				.hasMessage("User not found");
 	}
 
 	private UserEntity createUser(Long id, String email, String nickname, String role) {
