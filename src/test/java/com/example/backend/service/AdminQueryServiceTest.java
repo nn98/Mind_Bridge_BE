@@ -61,19 +61,7 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@BeforeEach
 	void setUp() {
 		testUser = createUser(1L, "admin@example.com", "관리자", "ADMIN");
-
-		testPost = PostEntity.builder()
-			.postId(1L)
-			.title("테스트 게시글")
-			.content("테스트 내용")
-			.userId(1L)  // ✅ userId 사용 (userEmail, userNickname 제거)
-			.visibility("public")
-			.likeCount(10)
-			.commentCount(5)
-			.createdAt(LocalDateTime.now())
-			.updatedAt(LocalDateTime.now())
-			.build();
-
+		testPost = createPost(1L, 1L, "테스트 게시글", "테스트 내용", "public", 10, 5);
 		testMetrics = DailyMetricsEntity.builder()
 			.statDate(LocalDate.now())
 			.loginCount(100)
@@ -274,6 +262,21 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 				.role(role)
 				.age(30)
 				.gender("male")
+				.createdAt(now)
+				.updatedAt(now)
+				.build();
+	}
+
+	private PostEntity createPost(Long postId, Long userId, String title, String content, String visibility, int likeCount, int commentCount) {
+		LocalDateTime now = LocalDateTime.now();
+		return PostEntity.builder()
+				.postId(postId)
+				.title(title)
+				.content(content)
+				.userId(userId)
+				.visibility(visibility)
+				.likeCount(likeCount)
+				.commentCount(commentCount)
 				.createdAt(now)
 				.updatedAt(now)
 				.build();
