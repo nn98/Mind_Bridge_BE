@@ -277,7 +277,7 @@ class AdminQueryServiceTest {
 
 	@Test
 	@DisplayName("존재하지 않는 게시글 삭제 시 예외는 발생하지 않음 - 멱등성")
-	void deletePostyNotCauseException() {
+	void deletePostNotCauseException() {
 		assertThatCode(() -> adminQueryService.deletePost(999L, "테스트 삭제"))
 				.doesNotThrowAnyException();
 
