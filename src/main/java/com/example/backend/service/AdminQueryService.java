@@ -123,37 +123,20 @@ public class AdminQueryService {
 
     public List<WeeklyMetricPoint> getWeeklyMetrics(int weeks) {
         LocalDate end = LocalDate.now();
-        LocalDate start = end.minusWeeks(weeks - 1).with(DayOfWeek.MONDAY);
-        WeekFields wf = WeekFields.of(Locale.KOREA);
-        Map<String, List<DailyMetricsEntity>> byWeek = dailyMetricsRepository
-                .findAllByStatDateBetween(start, end).stream()
-                .collect(Collectors.groupingBy(e -> {
-                    int y = e.getStatDate().get(wf.weekBasedYear());
-                    int w = e.getStatDate().get(wf.weekOfWeekBasedYear());
-                    return y + "-" + w;
-                }));
-        return byWeek.entrySet().stream().map(entry -> {
-            List<DailyMetricsEntity> list = entry.getValue();
-            long chats = list.stream().mapToLong(r -> safe((long)r.getChatCount())).sum();
-            long visits = list.stream().mapToLong(r -> safe((long)r.getLoginCount())).sum();
-            LocalDate any = list.get(0).getStatDate();
-            int year = any.get(wf.weekBasedYear());
-            int week = any.get(wf.weekOfWeekBasedYear());
-            LocalDate weekStart = any.with(wf.weekOfWeekBasedYear(), week).with(DayOfWeek.MONDAY);
-            LocalDate weekEnd = weekStart.plusDays(6);
-            return WeeklyMetricPoint.builder()
-                    .year(year)
-                    .week(week)
-                    .chatCount(chats)
-                    .visitCount(visits)
-                    .start(weekStart)
-                    .end(weekEnd)
-                    .build();
-        }).sorted((a,b) -> {
-            int c = Integer.compare(a.getYear(), b.getYear());
-            if (c != 0) return c;
-            return Integer.compare(a.getWeek(), b.getWeek());
-        }).toList();
+        LocalDate start = end.minusWeeks(weeks - 1L).with(DayOfWeek.MONDAY);
+
+        WeekFields weekFields = WeekFields.of(Locale.KOREA);
+        List<DailyMetricsEntity> metrics =
+                dailyMetricsRepository.findAllByStatDateBetween(start, end);
+
+        Map<String, List<DailyMetricsEntity>> groupedByWeek =
+                groupByWeek(metrics, weekFields);
+
+        List<WeeklyMetricPoint> points = groupedByWeek.values().stream()
+                .map(list -> toWeeklyMetricPoint(list, weekFields))
+                .toList();
+
+        return sortWeeklyMetrics(points);
     }
 
     public UserDistribution getUserDistribution() {
@@ -374,6 +357,58 @@ public class AdminQueryService {
                 .chatCount(safe((long) entity.getChatCount()))
                 .visitCount(safe((long) entity.getLoginCount()))
                 .build();
+    }
+
+    private Map<String, List<DailyMetricsEntity>> groupByWeek(List<DailyMetricsEntity> metrics,
+                                                              WeekFields weekFields) {
+        return metrics.stream()
+                .collect(Collectors.groupingBy(e -> buildWeekKey(e, weekFields)));
+    }
+
+    private String buildWeekKey(DailyMetricsEntity entity, WeekFields weekFields) {
+        LocalDate date = entity.getStatDate();
+        int year = date.get(weekFields.weekBasedYear());
+        int week = date.get(weekFields.weekOfWeekBasedYear());
+        return year + "-" + week;
+    }
+
+    private WeeklyMetricPoint toWeeklyMetricPoint(List<DailyMetricsEntity> metrics,
+                                                  WeekFields weekFields) {
+        long chats = metrics.stream()
+                .mapToLong(e -> safe((long) e.getChatCount()))
+                .sum();
+        long visits = metrics.stream()
+                .mapToLong(e -> safe((long) e.getLoginCount()))
+                .sum();
+
+        LocalDate any = metrics.get(0).getStatDate();
+        int year = any.get(weekFields.weekBasedYear());
+        int week = any.get(weekFields.weekOfWeekBasedYear());
+
+        LocalDate weekStart = any.with(weekFields.weekOfWeekBasedYear(), week)
+                .with(DayOfWeek.MONDAY);
+        LocalDate weekEnd = weekStart.plusDays(6);
+
+        return WeeklyMetricPoint.builder()
+                .year(year)
+                .week(week)
+                .chatCount(chats)
+                .visitCount(visits)
+                .start(weekStart)
+                .end(weekEnd)
+                .build();
+    }
+
+    private List<WeeklyMetricPoint> sortWeeklyMetrics(List<WeeklyMetricPoint> points) {
+        return points.stream()
+                .sorted((a, b) -> {
+                    int yearCompare = Integer.compare(a.getYear(), b.getYear());
+                    if (yearCompare != 0) {
+                        return yearCompare;
+                    }
+                    return Integer.compare(a.getWeek(), b.getWeek());
+                })
+                .toList();
     }
 
 }
