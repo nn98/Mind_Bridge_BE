@@ -79,6 +79,16 @@ class AuthServiceTest {
 				.hasMessage("이메일 또는 비밀번호가 잘못되었습니다.");
 	}
 
+	@Test
+	@DisplayName("로그아웃 시 JWT 쿠키를 제거한다")
+	void logout_clearsJwtCookie() {
+		HttpServletResponse response = mock(HttpServletResponse.class);
+
+		authService.logout(response);
+
+		verify(jwtUtil).clearJwtCookie(response);
+	}
+
 	private LoginRequest createLoginRequest(String email, String password) {
 		return new LoginRequest(email, password);
 	}
