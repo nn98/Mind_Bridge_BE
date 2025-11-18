@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -275,11 +276,12 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
-	@DisplayName("존재하지 않는 게시글 삭제 시 예외")
-	void deletePostyNotFoundException() {
-		assertThatThrownBy(() -> adminQueryService.deletePost(999L, "테스트 삭제"))
-				.isInstanceOf(NotFoundException.class)
-				.hasMessage("Post not found");
+	@DisplayName("존재하지 않는 게시글 삭제 시 예외는 발생하지 않음 - 멱등성")
+	void deletePostyNotCauseException() {
+		assertThatCode(() -> adminQueryService.deletePost(999L, "테스트 삭제"))
+				.doesNotThrowAnyException();
+
+		verify(postRepository).deleteById(999L);
 	}
 
 	@Test
