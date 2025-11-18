@@ -44,6 +44,21 @@ import com.example.backend.repository.UserRepository;
 @DisplayName("AdminQueryService 테스트")
 class AdminQueryServiceTest {
 
+	private static final Long DEFAULT_USER_ID = 1L;
+	private static final String DEFAULT_USER_EMAIL = "admin@example.com";
+	private static final String DEFAULT_USER_NICKNAME = "관리자";
+	private static final String DEFAULT_USER_ROLE = "ADMIN";
+
+	private static final Long DEFAULT_POST_ID = 1L;
+	private static final String DEFAULT_POST_TITLE = "테스트 게시글";
+	private static final String DEFAULT_POST_CONTENT = "테스트 내용";
+	private static final String DEFAULT_POST_VISIBILITY = "public";
+	private static final int DEFAULT_POST_LIKE_COUNT = 10;
+	private static final int DEFAULT_POST_COMMENT_COUNT = 5;
+
+	private static final int DEFAULT_LOGIN_COUNT = 100;
+	private static final int DEFAULT_CHAT_COUNT = 50;
+
 	@InjectMocks
 	private AdminQueryService adminQueryService;
 
