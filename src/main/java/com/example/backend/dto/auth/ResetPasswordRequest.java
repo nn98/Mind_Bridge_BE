@@ -2,11 +2,14 @@
 package com.example.backend.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
 public class ResetPasswordRequest {
 
     @NotBlank(message = "이메일은 필수입니다")
