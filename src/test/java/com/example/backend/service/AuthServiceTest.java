@@ -12,7 +12,6 @@ import static org.mockito.Mockito.verify;
 import com.example.backend.common.error.NotFoundException;
 import com.example.backend.dto.auth.FindIdRequest;
 import com.example.backend.dto.auth.ResetPasswordRequest;
-import jakarta.mail.internet.MimeMessage;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,23 +42,13 @@ class AuthServiceTest {
 	private static final String DEFAULT_PHONE = "010-1234-5678";
 	private static final String DEFAULT_NICKNAME = "테스터";
 
-	@Mock
-	private UserRepository userRepository;
+	@Mock private UserRepository userRepository;
+	@Mock private PasswordEncoder passwordEncoder;
+	@Mock private JwtUtil jwtUtil;
+	@Mock private JavaMailSender mailSender;
+	@Mock private DailyMetricsService dailyMetricsService;
 
-	@Mock
-	private PasswordEncoder passwordEncoder;
-
-	@Mock
-	private JwtUtil jwtUtil;
-
-	@Mock
-	private DailyMetricsService dailyMetricsService;
-
-	@InjectMocks
-	private AuthService authService;
-
-	@Mock
-	private JavaMailSender mailSender;
+	@InjectMocks private AuthService authService;
 
 	@Test
 	@DisplayName("유효한 로그인 정보로 인증 성공 시 쿠키 설정, 마지막 로그인 갱신, 방문자 수 증가")
