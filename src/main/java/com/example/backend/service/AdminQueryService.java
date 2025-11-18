@@ -86,31 +86,15 @@ public class AdminQueryService {
     }
 
     public Page<AdminPostRow> findPosts(AdminPostSearchRequest request, Pageable pageable) {
-        Specification<PostEntity> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (StringUtils.hasText(request.getQ())) {
-                String pattern = "%" + request.getQ().toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), pattern),
-                        cb.like(cb.lower(root.get("content")), pattern),
-                        cb.like(cb.lower(root.get("author").get("nickname")), pattern),
-                        cb.like(cb.lower(root.get("author").get("email")), pattern)
-                ));
-            }
-            if (StringUtils.hasText(request.getVisibility()) && !"all".equalsIgnoreCase(request.getVisibility())) {
-                boolean isPublic = PUBLIC.equalsIgnoreCase(request.getVisibility());
-                predicates.add(cb.equal(root.get("isPublic"), isPublic));
-            }
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Specification<PostEntity> spec = buildPostSpecification(request);
         Page<PostEntity> page = postRepository.findAll(spec, pageable);
         return page.map(this::toPostRow);
     }
 
     public AdminPostDetail getPostDetail(Long id) {
-        PostEntity p = postRepository.findById(id)
+        PostEntity post = postRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Post not found"));
-        return toPostDetail(p);
+        return toPostDetail(post);
     }
 
     @Transactional
@@ -363,6 +347,34 @@ public class AdminQueryService {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private Specification<PostEntity> buildPostSpecification(AdminPostSearchRequest request) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (StringUtils.hasText(request.getQ())) {
+                String pattern = "%" + request.getQ().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), pattern),
+                        cb.like(cb.lower(root.get("content")), pattern),
+                        cb.like(cb.lower(root.get("author").get("nickname")), pattern),
+                        cb.like(cb.lower(root.get("author").get("email")), pattern)
+                ));
+            }
+
+            if (hasVisibilityFilter(request)) {
+                boolean isPublic = PUBLIC.equalsIgnoreCase(request.getVisibility());
+                predicates.add(cb.equal(root.get("isPublic"), isPublic));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private boolean hasVisibilityFilter(AdminPostSearchRequest request) {
+        return StringUtils.hasText(request.getVisibility())
+                && !"all".equalsIgnoreCase(request.getVisibility());
     }
 
 }
