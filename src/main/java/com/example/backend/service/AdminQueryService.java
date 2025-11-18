@@ -140,24 +140,11 @@ public class AdminQueryService {
     }
 
     public UserDistribution getUserDistribution() {
-        java.util.List<UserRepository.GenderCount> genderRows =
-                userRepository.countByGenderGroup();
-        java.util.Map<String, Long> gender = genderRows.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        row -> row.getGender() == null ? "UNKNOWN" : row.getGender(),
-                        UserRepository.GenderCount::getCnt
-                ));
-
-        java.util.List<UserRepository.AgeBucketCount> ageRows =
-                userRepository.countByAgeBucketGroup();
-        java.util.Map<String, Long> ageBuckets = ageRows.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        UserRepository.AgeBucketCount::getBucket,
-                        UserRepository.AgeBucketCount::getCnt
-                ));
+        Map<String, Long> genderCounts = loadGenderCounts();
+        Map<String, Long> ageBuckets = loadAgeBucketCounts();
 
         return UserDistribution.builder()
-                .genderCounts(gender)
+                .genderCounts(genderCounts)
                 .ageBuckets(ageBuckets)
                 .build();
     }
@@ -409,6 +396,24 @@ public class AdminQueryService {
                     return Integer.compare(a.getWeek(), b.getWeek());
                 })
                 .toList();
+    }
+
+    private Map<String, Long> loadGenderCounts() {
+        List<UserRepository.GenderCount> rows = userRepository.countByGenderGroup();
+        return rows.stream()
+                .collect(Collectors.toMap(
+                        row -> row.getGender() == null ? "UNKNOWN" : row.getGender(),
+                        UserRepository.GenderCount::getCnt
+                ));
+    }
+
+    private Map<String, Long> loadAgeBucketCounts() {
+        List<UserRepository.AgeBucketCount> rows = userRepository.countByAgeBucketGroup();
+        return rows.stream()
+                .collect(Collectors.toMap(
+                        UserRepository.AgeBucketCount::getBucket,
+                        UserRepository.AgeBucketCount::getCnt
+                ));
     }
 
 }
