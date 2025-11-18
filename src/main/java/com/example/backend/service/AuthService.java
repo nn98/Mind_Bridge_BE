@@ -4,6 +4,7 @@ import java.security.SecureRandom;
 import java.util.Optional;
 import java.util.Random;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,9 +19,7 @@ import com.example.backend.dto.auth.ResetPasswordRequest;
 import com.example.backend.entity.UserEntity;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.security.JwtUtil;
-import com.example.backend.service.DailyMetricsService;
 
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,12 +30,18 @@ public class AuthService {
 
     private static final int TEMP_PASSWORD_LENGTH = 12;
     private static final String TEMP_PASSWORD_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+    private static final String MESSAGE_INVALID_LOGIN = "이메일 또는 비밀번호가 잘못되었습니다.";
+    private static final String MESSAGE_FIND_ID_NOT_FOUND = "일치하는 회원 정보를 찾을 수 없습니다.";
+    private static final String MESSAGE_RESET_EMAIL_NOT_FOUND = "해당 이메일로 등록된 계정이 없습니다.";
+    private static final String MESSAGE_RESET_PHONE_MISMATCH = "이메일과 전화번호가 일치하지 않습니다.";
+    private static final String MESSAGE_RESET_MAIL_FAIL = "임시 비밀번호 발송에 실패했습니다.";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final JavaMailSender mailSender;
     private final DailyMetricsService dailyMetricsService;
+
     private final Random random = new SecureRandom();
 
     @Transactional
@@ -98,7 +103,7 @@ public class AuthService {
         if (optionalUser.isEmpty()) {
             log.warn("아이디 찾기 실패 - 전화번호: {}, 닉네임: {}",
                     request.getPhoneNumber(), request.getNickname());
-            throw new NotFoundException("일치하는 회원 정보를 찾을 수 없습니다.");
+            throw new NotFoundException(MESSAGE_FIND_ID_NOT_FOUND);
         }
 
         return optionalUser.get();
@@ -108,16 +113,16 @@ public class AuthService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.warn("존재하지 않는 이메일로 비밀번호 재설정 시도: {}", email);
-                    return new NotFoundException("해당 이메일로 등록된 계정이 없습니다.");
+                    return new NotFoundException(MESSAGE_RESET_EMAIL_NOT_FOUND);
                 });
     }
 
     private UserEntity authenticateUser(LoginRequest request) {
         UserEntity user = userRepository.findByEmail(request.getEmail())
-            .orElseThrow(() -> new UnauthorizedException("이메일 또는 비밀번호가 잘못되었습니다."));
+                .orElseThrow(() -> new UnauthorizedException(MESSAGE_INVALID_LOGIN));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new UnauthorizedException("이메일 또는 비밀번호가 잘못되었습니다.");
+            throw new UnauthorizedException(MESSAGE_INVALID_LOGIN);
         }
 
         return user;
@@ -126,21 +131,26 @@ public class AuthService {
     private void validatePhoneNumber(UserEntity user, String phoneNumber) {
         if (!user.getPhoneNumber().equals(phoneNumber)) {
             log.warn("이메일과 전화번호가 일치하지 않습니다: {}", user.getEmail());
-            throw new NotFoundException("이메일과 전화번호가 일치하지 않습니다.");
+            throw new NotFoundException(MESSAGE_RESET_PHONE_MISMATCH);
         }
     }
 
     private String maskEmail(String email) {
-        if (email == null || !email.contains("@")) return email;
+        if (email == null || !email.contains("@")) {
+            return email;
+        }
 
         String[] parts = email.split("@", 2);
         String local = parts[0];
         String domain = parts[1];
 
-        if (local.length() <= 2) return email;
+        if (local.length() <= 2) {
+            return email;
+        }
 
-        String masked = local.substring(0, 2) + "*".repeat(Math.max(1, local.length() - 2));
-        return masked + "@" + domain;
+        String maskedLocal =
+                local.substring(0, 2) + "*".repeat(Math.max(1, local.length() - 2));
+        return maskedLocal + "@" + domain;
     }
 
     private String generateTempPassword() {
@@ -160,7 +170,7 @@ public class AuthService {
             log.info("비밀번호 재설정 완료: {}", user.getEmail());
         } catch (Exception e) {
             log.error("비밀번호 재설정 실패: {}", e.getMessage());
-            throw new RuntimeException("임시 비밀번호 발송에 실패했습니다.", e);
+            throw new RuntimeException(MESSAGE_RESET_MAIL_FAIL, e);
         }
     }
 
@@ -169,12 +179,13 @@ public class AuthService {
         message.setTo(toEmail);
         message.setSubject("[마음챗] 임시 비밀번호 안내");
         message.setText(
-            "안녕하세요. 마음챗입니다.\n\n" +
-                "요청하신 임시 비밀번호는 다음과 같습니다:\n\n" +
-                "임시 비밀번호: " + tempPassword + "\n\n" +
-                "보안을 위해 로그인 후 반드시 비밀번호를 변경해 주세요.\n\n" +
-                "감사합니다."
+                "안녕하세요. 마음챗입니다.\n\n" +
+                        "요청하신 임시 비밀번호는 다음과 같습니다:\n\n" +
+                        "임시 비밀번호: " + tempPassword + "\n\n" +
+                        "보안을 위해 로그인 후 반드시 비밀번호를 변경해 주세요.\n\n" +
+                        "감사합니다."
         );
         mailSender.send(message);
     }
+
 }
