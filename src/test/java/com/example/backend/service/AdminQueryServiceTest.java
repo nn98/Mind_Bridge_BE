@@ -79,8 +79,12 @@ class AdminQueryServiceTest {
 	void setUp() {
 		testUser = createUser(DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_NICKNAME, DEFAULT_USER_ROLE);
 
-		testPost = createPost(DEFAULT_POST_ID, DEFAULT_USER_ID, DEFAULT_POST_TITLE, DEFAULT_POST_CONTENT,
-				DEFAULT_POST_VISIBILITY, DEFAULT_POST_LIKE_COUNT, DEFAULT_POST_COMMENT_COUNT);
+		testPost = createPost(
+				DEFAULT_POST_ID, DEFAULT_USER_ID,
+				DEFAULT_POST_TITLE, DEFAULT_POST_CONTENT,
+				DEFAULT_POST_VISIBILITY,
+				DEFAULT_POST_LIKE_COUNT, DEFAULT_POST_COMMENT_COUNT
+		);
 
 		testMetrics = createMetrics(LocalDate.now(), DEFAULT_LOGIN_COUNT, DEFAULT_CHAT_COUNT);
 	}
@@ -230,8 +234,13 @@ class AdminQueryServiceTest {
 				.build();
 	}
 
-	private PostEntity createPost(Long postId, Long userId, String title, String content,
-								  String visibility, int likeCount, int commentCount) {
+	private PostEntity createPost(Long postId,
+								  Long userId,
+								  String title,
+								  String content,
+								  String visibility,
+								  int likeCount,
+								  int commentCount) {
 		LocalDateTime now = LocalDateTime.now();
 		return PostEntity.builder()
 				.postId(postId)
