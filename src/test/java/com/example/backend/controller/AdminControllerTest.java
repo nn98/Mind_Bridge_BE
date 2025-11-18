@@ -218,7 +218,7 @@ class AdminControllerTest {
         mockMvc.perform(delete("/api/admin/posts/5").param("reason","spam"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
-        then(adminQueryService).should().deletePost(5L, "spam");
+        then(adminQueryService).should().deletePost(5L);
     } // 정상 흐름 [1]
 
     // 게시글 삭제 404
@@ -227,7 +227,7 @@ class AdminControllerTest {
     @DisplayName("DELETE /api/admin/posts/{id} (미존재) → 404")
     void deletePost_404() throws Exception {
         willThrow(new com.example.backend.common.error.NotFoundException("not found"))
-            .given(adminQueryService).deletePost(7L, null);
+            .given(adminQueryService).deletePost(7L);
         mockMvc.perform(delete("/api/admin/posts/7"))
             .andExpect(status().isNotFound());
     } // PDAdvice 404 [1]
