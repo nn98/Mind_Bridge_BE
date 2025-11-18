@@ -117,6 +117,25 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
+	@DisplayName("관리자 통계 조회 - 최근 1주 데이터가 없으면 weekChats/weekVisits는 0")
+	void getAdminStats_noRecentMetrics() {
+		given(userRepository.count()).willReturn(1000L);
+		given(postRepository.count()).willReturn(500L);
+		given(dailyMetricsRepository.findById(any(LocalDate.class)))
+				.willReturn(Optional.empty());
+		given(dailyMetricsRepository.findAllByStatDateBetween(any(LocalDate.class), any(LocalDate.class)))
+				.willReturn(List.of());
+		given(userRepository.findAll()).willReturn(List.of(testUser));
+
+		AdminStats result = adminQueryService.getAdminStats();
+
+		assertThat(result.getTodayChats()).isZero();
+		assertThat(result.getTodayVisits()).isZero();
+		assertThat(result.getWeekChats()).isZero();
+		assertThat(result.getWeekVisits()).isZero();
+	}
+
+	@Test
 	@DisplayName("사용자 검색")
 	void findUsers() {
 		AdminUserSearchRequest request = AdminUserSearchRequest.builder()
