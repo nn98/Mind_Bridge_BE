@@ -100,16 +100,16 @@ class AdminQueryServiceTest {
 
 		assertThat(result.getTotalUsers()).isEqualTo(1000L);
 		assertThat(result.getTotalPosts()).isEqualTo(500L);
-		assertThat(result.getTodayChats()).isEqualTo(50L);
-		assertThat(result.getTodayVisits()).isEqualTo(100L);
+		assertThat(result.getTodayChats()).isEqualTo(DEFAULT_CHAT_COUNT);
+		assertThat(result.getTodayVisits()).isEqualTo(DEFAULT_LOGIN_COUNT);
 	}
 
 	@Test
 	@DisplayName("사용자 검색")
 	void findUsers() {
 		AdminUserSearchRequest request = AdminUserSearchRequest.builder()
-				.q("관리자")
-				.role("ADMIN")
+				.q(DEFAULT_USER_NICKNAME)
+				.role(DEFAULT_USER_ROLE)
 				.build();
 		Page<UserEntity> userPage = new PageImpl<>(List.of(testUser));
 		given(userRepository.findAll(any(Specification.class), any(Pageable.class)))
@@ -118,25 +118,17 @@ class AdminQueryServiceTest {
 		Page<AdminUserRow> result = adminQueryService.findUsers(request, PageRequest.of(0, 20));
 
 		assertThat(result.getContent()).hasSize(1);
-		AdminUserRow userRow = result.getContent().get(0);
-		assertThat(userRow.getId()).isEqualTo(1L);
-		assertThat(userRow.getNickname()).isEqualTo("관리자");
-		assertThat(userRow.getEmail()).isEqualTo("admin@example.com");
-		assertThat(userRow.getRole()).isEqualTo("ADMIN");
+		assertAdminUserRowDefault(result.getContent().get(0));
 	}
 
 	@Test
 	@DisplayName("사용자 상세 조회")
 	void getUserDetail() {
-		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
+		given(userRepository.findById(DEFAULT_USER_ID)).willReturn(Optional.of(testUser));
 
-		AdminUserDetail result = adminQueryService.getUserDetail(1L);
+		AdminUserDetail result = adminQueryService.getUserDetail(DEFAULT_USER_ID);
 
-		assertThat(result).isNotNull();
-		assertThat(result.getId()).isEqualTo(1L);
-		assertThat(result.getNickname()).isEqualTo("관리자");
-		assertThat(result.getEmail()).isEqualTo("admin@example.com");
-		assertThat(result.getRole()).isEqualTo("ADMIN");
+		assertAdminUserDetailDefault(result);
 	}
 
 	@Test
@@ -144,47 +136,37 @@ class AdminQueryServiceTest {
 	void findPosts() {
 		AdminPostSearchRequest request = AdminPostSearchRequest.builder()
 				.q("테스트")
-				.visibility("public")
+				.visibility(DEFAULT_POST_VISIBILITY)
 				.build();
 		Page<PostEntity> postPage = new PageImpl<>(List.of(testPost));
+
 		given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
 				.willReturn(postPage);
-		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
+		given(userRepository.findById(DEFAULT_USER_ID)).willReturn(Optional.of(testUser));
 
 		Page<AdminPostRow> result = adminQueryService.findPosts(request, PageRequest.of(0, 20));
 
 		assertThat(result.getContent()).hasSize(1);
-		AdminPostRow postRow = result.getContent().get(0);
-		assertThat(postRow.getId()).isEqualTo(1L);
-		assertThat(postRow.getTitle()).isEqualTo("테스트 게시글");
-		assertThat(postRow.getUserEmail()).isEqualTo("admin@example.com");
-		assertThat(postRow.getUserNickname()).isEqualTo("관리자");
-		assertThat(postRow.getVisibility()).isEqualTo("public");
-		assertThat(postRow.getLikeCount()).isEqualTo(10);
+		assertAdminPostRowDefault(result.getContent().get(0));
 	}
 
 	@Test
 	@DisplayName("게시글 상세 조회")
 	void getPostDetail() {
-		given(postRepository.findById(1L)).willReturn(Optional.of(testPost));
-		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
+		given(postRepository.findById(DEFAULT_POST_ID)).willReturn(Optional.of(testPost));
+		given(userRepository.findById(DEFAULT_USER_ID)).willReturn(Optional.of(testUser));
 
-		AdminPostDetail result = adminQueryService.getPostDetail(1L);
+		AdminPostDetail result = adminQueryService.getPostDetail(DEFAULT_POST_ID);
 
-		assertThat(result).isNotNull();
-		assertThat(result.getId()).isEqualTo(1L);
-		assertThat(result.getTitle()).isEqualTo("테스트 게시글");
-		assertThat(result.getContent()).isEqualTo("테스트 내용");
-		assertThat(result.getUserEmail()).isEqualTo("admin@example.com");
-		assertThat(result.getUserNickname()).isEqualTo("관리자");
+		assertAdminPostDetailDefault(result);
 	}
 
 	@Test
 	@DisplayName("게시글 공개설정 수정")
 	void updatePostVisibility() {
-		given(postRepository.findById(1L)).willReturn(Optional.of(testPost));
+		given(postRepository.findById(DEFAULT_POST_ID)).willReturn(Optional.of(testPost));
 
-		adminQueryService.updatePostVisibility(1L, "private");
+		adminQueryService.updatePostVisibility(DEFAULT_POST_ID, "private");
 
 		assertThat(testPost.getVisibility()).isEqualTo("private");
 		verify(postRepository).save(testPost);
@@ -193,9 +175,9 @@ class AdminQueryServiceTest {
 	@Test
 	@DisplayName("게시글 삭제")
 	void deletePost() {
-		adminQueryService.deletePost(1L, "테스트 삭제");
+		adminQueryService.deletePost(DEFAULT_POST_ID, "테스트 삭제");
 
-		verify(postRepository).deleteById(1L);
+		verify(postRepository).deleteById(DEFAULT_POST_ID);
 	}
 
 	@Test
@@ -206,10 +188,7 @@ class AdminQueryServiceTest {
 
 		DailyMetricPoint result = adminQueryService.getTodayMetrics();
 
-		assertThat(result).isNotNull();
-		assertThat(result.getDate()).isEqualTo(today);
-		assertThat(result.getChatCount()).isEqualTo(50);
-		assertThat(result.getVisitCount()).isEqualTo(100);
+		assertDailyMetricPoint(result, today, DEFAULT_CHAT_COUNT, DEFAULT_LOGIN_COUNT);
 	}
 
 	@Test
@@ -223,9 +202,7 @@ class AdminQueryServiceTest {
 		List<DailyMetricPoint> result = adminQueryService.getDailyRange(start, end);
 
 		assertThat(result).hasSize(1);
-		DailyMetricPoint point = result.get(0);
-		assertThat(point.getChatCount()).isEqualTo(50);
-		assertThat(point.getVisitCount()).isEqualTo(100);
+		assertDailyMetricPoint(result.get(0), testMetrics.getStatDate(), DEFAULT_CHAT_COUNT, DEFAULT_LOGIN_COUNT);
 	}
 
 	@Test
