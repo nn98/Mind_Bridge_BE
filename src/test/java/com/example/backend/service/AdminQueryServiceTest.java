@@ -68,13 +68,12 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("관리자 통계 조회")
 	void getAdminStats() {
-		// given
 		given(userRepository.count()).willReturn(1000L);
 		given(postRepository.count()).willReturn(500L);
 		given(dailyMetricsRepository.findById(any(LocalDate.class)))
-			.willReturn(Optional.of(testMetrics));
+				.willReturn(Optional.of(testMetrics));
 		given(dailyMetricsRepository.findAllByStatDateBetween(any(LocalDate.class), any(LocalDate.class)))
-			.willReturn(List.of(testMetrics));
+				.willReturn(List.of(testMetrics));
 		given(userRepository.findAll()).willReturn(List.of(testUser));
 
 		// when
@@ -92,13 +91,13 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	void findUsers() {
 		// given
 		AdminUserSearchRequest request = AdminUserSearchRequest.builder()
-			.q("관리자")
-			.role("ADMIN")
-			.build();
+				.q("관리자")
+				.role("ADMIN")
+				.build();
 
 		Page<UserEntity> userPage = new PageImpl<>(List.of(testUser));
 		given(userRepository.findAll(any(Specification.class), any(Pageable.class)))
-			.willReturn(userPage);
+				.willReturn(userPage);
 
 		// when
 		Page<AdminUserRow> result = adminQueryService.findUsers(request, PageRequest.of(0, 20));
@@ -134,13 +133,13 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	void findPosts() {
 		// given
 		AdminPostSearchRequest request = AdminPostSearchRequest.builder()
-			.q("테스트")
-			.visibility("public")
-			.build();
+				.q("테스트")
+				.visibility("public")
+				.build();
 
 		Page<PostEntity> postPage = new PageImpl<>(List.of(testPost));
 		given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
-			.willReturn(postPage);
+				.willReturn(postPage);
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));  // ✅ JOIN용 Mock 추가
 
 		// when
@@ -224,7 +223,7 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 		LocalDate start = LocalDate.now().minusDays(7);
 		LocalDate end = LocalDate.now();
 		given(dailyMetricsRepository.findAllByStatDateBetween(start, end))
-			.willReturn(List.of(testMetrics));
+				.willReturn(List.of(testMetrics));
 
 		// when
 		List<DailyMetricPoint> result = adminQueryService.getDailyRange(start, end);
@@ -244,8 +243,8 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 
 		// when & then
 		assertThatThrownBy(() -> adminQueryService.getUserDetail(999L))
-			.isInstanceOf(NotFoundException.class)
-			.hasMessage("User not found");
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("User not found");
 	}
 
 	private UserEntity createUser(Long id, String email, String nickname, String role) {
