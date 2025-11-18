@@ -62,11 +62,7 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	void setUp() {
 		testUser = createUser(1L, "admin@example.com", "관리자", "ADMIN");
 		testPost = createPost(1L, 1L, "테스트 게시글", "테스트 내용", "public", 10, 5);
-		testMetrics = DailyMetricsEntity.builder()
-			.statDate(LocalDate.now())
-			.loginCount(100)
-			.chatCount(50)
-			.build();
+		testMetrics = createMetrics(LocalDate.now(), 100, 50);
 	}
 
 	@Test
@@ -279,6 +275,14 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 				.commentCount(commentCount)
 				.createdAt(now)
 				.updatedAt(now)
+				.build();
+	}
+
+	private DailyMetricsEntity createMetrics(LocalDate date, int loginCount, int chatCount) {
+		return DailyMetricsEntity.builder()
+				.statDate(date)
+				.loginCount(loginCount)
+				.chatCount(chatCount)
 				.build();
 	}
 
