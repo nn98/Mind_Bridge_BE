@@ -246,12 +246,8 @@ public class AdminQueryService {
         List<DailyMetricsEntity> metrics =
                 dailyMetricsRepository.findAllByStatDateBetween(start, today);
 
-        long chats = metrics.stream()
-                .mapToLong(e -> safe((long) e.getChatCount()))
-                .sum();
-        long visits = metrics.stream()
-                .mapToLong(e -> safe((long) e.getLoginCount()))
-                .sum();
+        long chats = sumChats(metrics);
+        long visits = sumVisits(metrics);
 
         return WeeklyMetricPoint.builder()
                 .year(today.getYear())
@@ -414,12 +410,8 @@ public class AdminQueryService {
 
     private WeeklyMetricPoint toWeeklyMetricPoint(List<DailyMetricsEntity> metrics,
                                                   WeekFields weekFields) {
-        long chats = metrics.stream()
-                .mapToLong(e -> safe((long) e.getChatCount()))
-                .sum();
-        long visits = metrics.stream()
-                .mapToLong(e -> safe((long) e.getLoginCount()))
-                .sum();
+        long chats = sumChats(metrics);
+        long visits = sumVisits(metrics);
 
         LocalDate any = metrics.get(0).getStatDate();
         int year = any.get(weekFields.weekBasedYear());
@@ -467,6 +459,18 @@ public class AdminQueryService {
                         UserRepository.AgeBucketCount::getBucket,
                         UserRepository.AgeBucketCount::getCnt
                 ));
+    }
+
+    private long sumChats(List<DailyMetricsEntity> metrics) {
+        return metrics.stream()
+                .mapToLong(e -> safe((long) e.getChatCount()))
+                .sum();
+    }
+
+    private long sumVisits(List<DailyMetricsEntity> metrics) {
+        return metrics.stream()
+                .mapToLong(e -> safe((long) e.getLoginCount()))
+                .sum();
     }
 
 }
