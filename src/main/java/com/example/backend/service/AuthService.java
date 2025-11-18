@@ -60,31 +60,13 @@ public class AuthService {
 
     @Transactional
     public String resetPassword(ResetPasswordRequest request) {
-        Optional<UserEntity> optionalUser = userRepository.findByEmail(request.getEmail());
-
-        if (optionalUser.isEmpty()) {
-            log.warn("존재하지 않는 이메일로 비밀번호 재설정 시도: {}", request.getEmail());
-            throw new NotFoundException("해당 이메일로 등록된 계정이 없습니다.");
-        }
-
-        UserEntity user = optionalUser.get();
-        if (!user.getPhoneNumber().equals(request.getPhoneNumber())) {
-            log.warn("이메일과 전화번호가 일치하지 않습니다: {}", request.getEmail());
-            throw new NotFoundException("이메일과 전화번호가 일치하지 않습니다.");
-        }
+        UserEntity user = findUserByEmail(request.getEmail());
+        validatePhoneNumber(user, request.getPhoneNumber());
 
         String tempPassword = generateTempPassword();
+        resetPasswordWithTemp(user, tempPassword);
 
-        try {
-            sendTempPasswordEmail(user.getEmail(), tempPassword);
-            user.setPassword(passwordEncoder.encode(tempPassword));
-            userRepository.save(user);
-            log.info("비밀번호 재설정 완료: {}", user.getEmail());
-            return tempPassword;
-        } catch (Exception e) {
-            log.error("비밀번호 재설정 실패: {}", e.getMessage());
-            throw new RuntimeException("임시 비밀번호 발송에 실패했습니다.", e);
-        }
+        return tempPassword;
     }
 
     @Transactional
@@ -93,7 +75,6 @@ public class AuthService {
             userRepository.touchLastLogin(email);
         } catch (Exception e) {
             log.warn("마지막 로그인 시간 업데이트 실패: {}", email, e);
-            // 로그인은 성공시키고 로그만 남김
         }
     }
 
@@ -121,6 +102,14 @@ public class AuthService {
         return optionalUser.get();
     }
 
+    private UserEntity findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("존재하지 않는 이메일로 비밀번호 재설정 시도: {}", email);
+                    return new NotFoundException("해당 이메일로 등록된 계정이 없습니다.");
+                });
+    }
+
     private UserEntity authenticateUser(LoginRequest request) {
         UserEntity user = userRepository.findByEmail(request.getEmail())
             .orElseThrow(() -> new UnauthorizedException("이메일 또는 비밀번호가 잘못되었습니다."));
@@ -130,6 +119,13 @@ public class AuthService {
         }
 
         return user;
+    }
+
+    private void validatePhoneNumber(UserEntity user, String phoneNumber) {
+        if (!user.getPhoneNumber().equals(phoneNumber)) {
+            log.warn("이메일과 전화번호가 일치하지 않습니다: {}", user.getEmail());
+            throw new NotFoundException("이메일과 전화번호가 일치하지 않습니다.");
+        }
     }
 
     private String maskEmail(String email) {
@@ -156,6 +152,18 @@ public class AuthService {
         }
 
         return sb.toString();
+    }
+
+    private void resetPasswordWithTemp(UserEntity user, String tempPassword) {
+        try {
+            sendTempPasswordEmail(user.getEmail(), tempPassword);
+            user.setPassword(passwordEncoder.encode(tempPassword));
+            userRepository.save(user);
+            log.info("비밀번호 재설정 완료: {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("비밀번호 재설정 실패: {}", e.getMessage());
+            throw new RuntimeException("임시 비밀번호 발송에 실패했습니다.", e);
+        }
     }
 
     private void sendTempPasswordEmail(String toEmail, String tempPassword) {
