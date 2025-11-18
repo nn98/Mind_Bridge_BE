@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.example.backend.common.error.NotFoundException;
 import com.example.backend.dto.auth.FindIdRequest;
 import java.util.Optional;
 
@@ -105,6 +106,19 @@ class AuthServiceTest {
 		String maskedEmail = authService.findAndMaskUserEmail(request);
 
 		assertThat(maskedEmail).isEqualTo("lo*******@example.com");
+	}
+
+	@Test
+	@DisplayName("전화번호와 닉네임이 일치하는 사용자가 없으면 NotFoundException 발생")
+	void findAndMaskUserEmail_userNotFound_throwsNotFound() {
+		FindIdRequest request = new FindIdRequest(DEFAULT_PHONE, DEFAULT_NICKNAME);
+
+		given(userRepository.findByPhoneNumberAndNickname(DEFAULT_PHONE, DEFAULT_NICKNAME))
+				.willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> authService.findAndMaskUserEmail(request))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("일치하는 회원 정보를 찾을 수 없습니다.");
 	}
 
 	private LoginRequest createLoginRequest(String email, String password) {
