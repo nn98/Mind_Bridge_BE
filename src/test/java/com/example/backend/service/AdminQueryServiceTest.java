@@ -1,8 +1,10 @@
 package com.example.backend.service;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.BDDMockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,11 +41,11 @@ import com.example.backend.repository.PostRepository;
 import com.example.backend.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AdminQueryService 테스트")  // ✅ Impl 제거
-class AdminQueryServiceTest {  // ✅ 클래스명도 변경
+@DisplayName("AdminQueryService 테스트")
+class AdminQueryServiceTest {
 
 	@InjectMocks
-	private AdminQueryService adminQueryService;  // ✅ AdminQueryService → AdminQueryService
+	private AdminQueryService adminQueryService;
 
 	@Mock
 	private UserRepository userRepository;
@@ -76,10 +78,8 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 				.willReturn(List.of(testMetrics));
 		given(userRepository.findAll()).willReturn(List.of(testUser));
 
-		// when
 		AdminStats result = adminQueryService.getAdminStats();
 
-		// then
 		assertThat(result.getTotalUsers()).isEqualTo(1000L);
 		assertThat(result.getTotalPosts()).isEqualTo(500L);
 		assertThat(result.getTodayChats()).isEqualTo(50L);
@@ -89,20 +89,16 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("사용자 검색")
 	void findUsers() {
-		// given
 		AdminUserSearchRequest request = AdminUserSearchRequest.builder()
 				.q("관리자")
 				.role("ADMIN")
 				.build();
-
 		Page<UserEntity> userPage = new PageImpl<>(List.of(testUser));
 		given(userRepository.findAll(any(Specification.class), any(Pageable.class)))
 				.willReturn(userPage);
 
-		// when
 		Page<AdminUserRow> result = adminQueryService.findUsers(request, PageRequest.of(0, 20));
 
-		// then
 		assertThat(result.getContent()).hasSize(1);
 		AdminUserRow userRow = result.getContent().get(0);
 		assertThat(userRow.getId()).isEqualTo(1L);
@@ -114,13 +110,10 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("사용자 상세 조회")
 	void getUserDetail() {
-		// given
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 
-		// when
 		AdminUserDetail result = adminQueryService.getUserDetail(1L);
 
-		// then
 		assertThat(result).isNotNull();
 		assertThat(result.getId()).isEqualTo(1L);
 		assertThat(result.getNickname()).isEqualTo("관리자");
@@ -131,27 +124,23 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("게시글 검색")
 	void findPosts() {
-		// given
 		AdminPostSearchRequest request = AdminPostSearchRequest.builder()
 				.q("테스트")
 				.visibility("public")
 				.build();
-
 		Page<PostEntity> postPage = new PageImpl<>(List.of(testPost));
 		given(postRepository.findAll(any(Specification.class), any(Pageable.class)))
 				.willReturn(postPage);
-		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));  // ✅ JOIN용 Mock 추가
+		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 
-		// when
 		Page<AdminPostRow> result = adminQueryService.findPosts(request, PageRequest.of(0, 20));
 
-		// then
 		assertThat(result.getContent()).hasSize(1);
 		AdminPostRow postRow = result.getContent().get(0);
 		assertThat(postRow.getId()).isEqualTo(1L);
 		assertThat(postRow.getTitle()).isEqualTo("테스트 게시글");
-		assertThat(postRow.getUserEmail()).isEqualTo("admin@example.com");  // ✅ JOIN으로 조회된 값
-		assertThat(postRow.getUserNickname()).isEqualTo("관리자");  // ✅ JOIN으로 조회된 값
+		assertThat(postRow.getUserEmail()).isEqualTo("admin@example.com");
+		assertThat(postRow.getUserNickname()).isEqualTo("관리자");
 		assertThat(postRow.getVisibility()).isEqualTo("public");
 		assertThat(postRow.getLikeCount()).isEqualTo(10);
 	}
@@ -159,32 +148,26 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("게시글 상세 조회")
 	void getPostDetail() {
-		// given
 		given(postRepository.findById(1L)).willReturn(Optional.of(testPost));
-		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));  // ✅ JOIN용 Mock 추가
+		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 
-		// when
 		AdminPostDetail result = adminQueryService.getPostDetail(1L);
 
-		// then
 		assertThat(result).isNotNull();
 		assertThat(result.getId()).isEqualTo(1L);
 		assertThat(result.getTitle()).isEqualTo("테스트 게시글");
 		assertThat(result.getContent()).isEqualTo("테스트 내용");
-		assertThat(result.getUserEmail()).isEqualTo("admin@example.com");  // ✅ JOIN으로 조회된 값
-		assertThat(result.getUserNickname()).isEqualTo("관리자");  // ✅ JOIN으로 조회된 값
+		assertThat(result.getUserEmail()).isEqualTo("admin@example.com");
+		assertThat(result.getUserNickname()).isEqualTo("관리자");
 	}
 
 	@Test
 	@DisplayName("게시글 공개설정 수정")
 	void updatePostVisibility() {
-		// given
 		given(postRepository.findById(1L)).willReturn(Optional.of(testPost));
 
-		// when
 		adminQueryService.updatePostVisibility(1L, "private");
 
-		// then
 		assertThat(testPost.getVisibility()).isEqualTo("private");
 		verify(postRepository).save(testPost);
 	}
@@ -192,24 +175,19 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("게시글 삭제")
 	void deletePost() {
-		// when
 		adminQueryService.deletePost(1L, "테스트 삭제");
 
-		// then
 		verify(postRepository).deleteById(1L);
 	}
 
 	@Test
 	@DisplayName("오늘 통계 조회")
 	void getTodayMetrics() {
-		// given
 		LocalDate today = LocalDate.now();
 		given(dailyMetricsRepository.findById(today)).willReturn(Optional.of(testMetrics));
 
-		// when
 		DailyMetricPoint result = adminQueryService.getTodayMetrics();
 
-		// then
 		assertThat(result).isNotNull();
 		assertThat(result.getDate()).isEqualTo(today);
 		assertThat(result.getChatCount()).isEqualTo(50);
@@ -219,16 +197,13 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("날짜 범위 통계 조회")
 	void getDailyRange() {
-		// given
 		LocalDate start = LocalDate.now().minusDays(7);
 		LocalDate end = LocalDate.now();
 		given(dailyMetricsRepository.findAllByStatDateBetween(start, end))
 				.willReturn(List.of(testMetrics));
 
-		// when
 		List<DailyMetricPoint> result = adminQueryService.getDailyRange(start, end);
 
-		// then
 		assertThat(result).hasSize(1);
 		DailyMetricPoint point = result.get(0);
 		assertThat(point.getChatCount()).isEqualTo(50);
@@ -238,10 +213,8 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 	@Test
 	@DisplayName("존재하지 않는 사용자 조회 시 예외")
 	void getUserDetailNotFoundException() {
-		// given
 		given(userRepository.findById(999L)).willReturn(Optional.empty());
 
-		// when & then
 		assertThatThrownBy(() -> adminQueryService.getUserDetail(999L))
 				.isInstanceOf(NotFoundException.class)
 				.hasMessage("User not found");
@@ -262,7 +235,8 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 				.build();
 	}
 
-	private PostEntity createPost(Long postId, Long userId, String title, String content, String visibility, int likeCount, int commentCount) {
+	private PostEntity createPost(Long postId, Long userId, String title, String content,
+								  String visibility, int likeCount, int commentCount) {
 		LocalDateTime now = LocalDateTime.now();
 		return PostEntity.builder()
 				.postId(postId)
