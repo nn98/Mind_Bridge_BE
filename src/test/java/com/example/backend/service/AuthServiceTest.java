@@ -2,12 +2,17 @@ package com.example.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.example.backend.common.error.NotFoundException;
 import com.example.backend.dto.auth.FindIdRequest;
+import com.example.backend.dto.auth.ResetPasswordRequest;
+import jakarta.mail.internet.MimeMessage;
 import java.util.Optional;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,6 +22,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.example.backend.common.error.UnauthorizedException;
@@ -50,6 +57,9 @@ class AuthServiceTest {
 
 	@InjectMocks
 	private AuthService authService;
+
+	@Mock
+	private JavaMailSender mailSender;
 
 	@Test
 	@DisplayName("유효한 로그인 정보로 인증 성공 시 쿠키 설정, 마지막 로그인 갱신, 방문자 수 증가")
@@ -119,6 +129,63 @@ class AuthServiceTest {
 		assertThatThrownBy(() -> authService.findAndMaskUserEmail(request))
 				.isInstanceOf(NotFoundException.class)
 				.hasMessage("일치하는 회원 정보를 찾을 수 없습니다.");
+	}
+
+	@Test
+	@DisplayName("이메일과 전화번호가 일치하면 임시 비밀번호를 발급하고 저장 및 메일 발송한다")
+	void resetPassword_validRequest_sendsTempPasswordAndUpdatesUser() {
+		ResetPasswordRequest request = new ResetPasswordRequest(DEFAULT_EMAIL, DEFAULT_PHONE);
+		UserEntity user = createUser(DEFAULT_EMAIL, ENCODED_PASSWORD, DEFAULT_PHONE);
+
+		given(userRepository.findByEmail(DEFAULT_EMAIL)).willReturn(Optional.of(user));
+		given(passwordEncoder.encode(anyString())).willReturn("newEncodedPassword");
+
+		String tempPassword = authService.resetPassword(request);
+
+		assertThat(tempPassword).hasSize(12);
+		assertThat(user.getPassword()).isEqualTo("newEncodedPassword");
+		verify(userRepository).save(user);
+		verify(mailSender).send(any(SimpleMailMessage.class));
+	}
+
+	@Test
+	@DisplayName("존재하지 않는 이메일로 비밀번호 재설정 시 NotFoundException 발생")
+	void resetPassword_emailNotFound_throwsNotFound() {
+		ResetPasswordRequest request = new ResetPasswordRequest(DEFAULT_EMAIL, DEFAULT_PHONE);
+
+		given(userRepository.findByEmail(DEFAULT_EMAIL)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> authService.resetPassword(request))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("해당 이메일로 등록된 계정이 없습니다.");
+	}
+
+	@Test
+	@DisplayName("이메일과 전화번호가 일치하지 않으면 NotFoundException 발생")
+	void resetPassword_phoneNotMatch_throwsNotFound() {
+		ResetPasswordRequest request = new ResetPasswordRequest(DEFAULT_EMAIL, "010-9999-9999");
+		UserEntity user = createUser(DEFAULT_EMAIL, ENCODED_PASSWORD, DEFAULT_PHONE);
+
+		given(userRepository.findByEmail(DEFAULT_EMAIL)).willReturn(Optional.of(user));
+
+		assertThatThrownBy(() -> authService.resetPassword(request))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessage("이메일과 전화번호가 일치하지 않습니다.");
+	}
+
+	@Test
+	@DisplayName("임시 비밀번호 메일 발송에 실패하면 RuntimeException 발생")
+	void resetPassword_mailSendFails_throwsRuntimeException() {
+		ResetPasswordRequest request = new ResetPasswordRequest(DEFAULT_EMAIL, DEFAULT_PHONE);
+		UserEntity user = createUser(DEFAULT_EMAIL, ENCODED_PASSWORD, DEFAULT_PHONE);
+
+		given(userRepository.findByEmail(DEFAULT_EMAIL)).willReturn(Optional.of(user));
+		doThrow(new RuntimeException("메일 서버 오류"))
+				.when(mailSender).send(any(SimpleMailMessage.class));
+
+		assertThatThrownBy(() -> authService.resetPassword(request))
+				.isInstanceOf(RuntimeException.class)
+				.hasMessage("임시 비밀번호 발송에 실패했습니다.");
 	}
 
 	private LoginRequest createLoginRequest(String email, String password) {
