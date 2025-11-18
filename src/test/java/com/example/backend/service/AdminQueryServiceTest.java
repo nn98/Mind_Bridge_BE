@@ -60,17 +60,7 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 
 	@BeforeEach
 	void setUp() {
-		testUser = UserEntity.builder()
-			.userId(1L)
-			.email("admin@example.com")
-			.nickname("관리자")
-			.fullName("관리자")
-			.role("ADMIN")
-			.age(30)
-			.gender("male")
-			.createdAt(LocalDateTime.now())
-			.updatedAt(LocalDateTime.now())
-			.build();
+		testUser = createUser(1L, "admin@example.com", "관리자", "ADMIN");
 
 		testPost = PostEntity.builder()
 			.postId(1L)
@@ -273,4 +263,20 @@ class AdminQueryServiceTest {  // ✅ 클래스명도 변경
 			.isInstanceOf(NotFoundException.class)
 			.hasMessage("User not found");
 	}
+
+	private UserEntity createUser(Long id, String email, String nickname, String role) {
+		LocalDateTime now = LocalDateTime.now();
+		return UserEntity.builder()
+				.userId(id)
+				.email(email)
+				.nickname(nickname)
+				.fullName(nickname)
+				.role(role)
+				.age(30)
+				.gender("male")
+				.createdAt(now)
+				.updatedAt(now)
+				.build();
+	}
+
 }
