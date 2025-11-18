@@ -77,9 +77,12 @@ class AdminQueryServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		testUser = createUser(1L, "admin@example.com", "관리자", "ADMIN");
-		testPost = createPost(1L, 1L, "테스트 게시글", "테스트 내용", "public", 10, 5);
-		testMetrics = createMetrics(LocalDate.now(), 100, 50);
+		testUser = createUser(DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_NICKNAME, DEFAULT_USER_ROLE);
+
+		testPost = createPost(DEFAULT_POST_ID, DEFAULT_USER_ID, DEFAULT_POST_TITLE, DEFAULT_POST_CONTENT,
+				DEFAULT_POST_VISIBILITY, DEFAULT_POST_LIKE_COUNT, DEFAULT_POST_COMMENT_COUNT);
+
+		testMetrics = createMetrics(LocalDate.now(), DEFAULT_LOGIN_COUNT, DEFAULT_CHAT_COUNT);
 	}
 
 	@Test
@@ -272,6 +275,92 @@ class AdminQueryServiceTest {
 				.loginCount(loginCount)
 				.chatCount(chatCount)
 				.build();
+	}
+
+	private void assertAdminUserRowDefault(AdminUserRow row) {
+		assertAdminUserRow(
+				row,
+				DEFAULT_USER_ID,
+				DEFAULT_USER_EMAIL,
+				DEFAULT_USER_NICKNAME,
+				DEFAULT_USER_ROLE
+		);
+	}
+
+	private void assertAdminUserRow(AdminUserRow row, Long id, String email, String nickname, String role) {
+		assertThat(row.getId()).isEqualTo(id);
+		assertThat(row.getEmail()).isEqualTo(email);
+		assertThat(row.getNickname()).isEqualTo(nickname);
+		assertThat(row.getRole()).isEqualTo(role);
+	}
+
+	private void assertAdminUserDetailDefault(AdminUserDetail detail) {
+		assertAdminUserDetail(
+				detail,
+				DEFAULT_USER_ID,
+				DEFAULT_USER_EMAIL,
+				DEFAULT_USER_NICKNAME,
+				DEFAULT_USER_ROLE
+		);
+	}
+
+	private void assertAdminUserDetail(AdminUserDetail detail, Long id, String email, String nickname, String role) {
+		assertThat(detail).isNotNull();
+		assertThat(detail.getId()).isEqualTo(id);
+		assertThat(detail.getEmail()).isEqualTo(email);
+		assertThat(detail.getNickname()).isEqualTo(nickname);
+		assertThat(detail.getRole()).isEqualTo(role);
+	}
+
+	private void assertAdminPostRowDefault(AdminPostRow row) {
+		assertAdminPostRow(
+				row,
+				DEFAULT_POST_ID,
+				DEFAULT_POST_TITLE,
+				DEFAULT_USER_EMAIL,
+				DEFAULT_USER_NICKNAME,
+				DEFAULT_POST_VISIBILITY,
+				DEFAULT_POST_LIKE_COUNT
+		);
+	}
+
+	private void assertAdminPostRow(AdminPostRow row, Long id, String title, String userEmail,
+									String userNickname, String visibility, int likeCount) {
+		assertThat(row.getId()).isEqualTo(id);
+		assertThat(row.getTitle()).isEqualTo(title);
+		assertThat(row.getUserEmail()).isEqualTo(userEmail);
+		assertThat(row.getUserNickname()).isEqualTo(userNickname);
+		assertThat(row.getVisibility()).isEqualTo(visibility);
+		assertThat(row.getLikeCount()).isEqualTo(likeCount);
+	}
+
+	private void assertAdminPostDetailDefault(AdminPostDetail detail) {
+		assertAdminPostDetail(
+				detail,
+				DEFAULT_POST_ID,
+				DEFAULT_POST_TITLE,
+				DEFAULT_POST_CONTENT,
+				DEFAULT_USER_EMAIL,
+				DEFAULT_USER_NICKNAME
+		);
+	}
+
+	private void assertAdminPostDetail(AdminPostDetail detail, Long id, String title, String content,
+									   String userEmail, String userNickname) {
+		assertThat(detail).isNotNull();
+		assertThat(detail.getId()).isEqualTo(id);
+		assertThat(detail.getTitle()).isEqualTo(title);
+		assertThat(detail.getContent()).isEqualTo(content);
+		assertThat(detail.getUserEmail()).isEqualTo(userEmail);
+		assertThat(detail.getUserNickname()).isEqualTo(userNickname);
+	}
+
+	private void assertDailyMetricPoint(DailyMetricPoint point, LocalDate expectedDate,
+										long expectedChats, long expectedVisits) {
+		assertThat(point).isNotNull();
+		assertThat(point.getDate()).isEqualTo(expectedDate);
+		assertThat(point.getChatCount()).isEqualTo(expectedChats);
+		assertThat(point.getVisitCount()).isEqualTo(expectedVisits);
 	}
 
 }
