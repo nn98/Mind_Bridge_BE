@@ -55,35 +55,22 @@ public class AdminQueryService {
     public AdminStats getAdminStats() {
         long totalUsers = userRepository.count();
         long totalPosts = postRepository.count();
+
         LocalDate today = LocalDate.now();
-        DailyMetricsEntity todayRow = dailyMetricsRepository.findById(today).orElse(null);
-        long todayChats = todayRow != null ? todayRow.getChatCount() : 0L;
-        // loginCount를 사용 (visitCount가 아닌)
-        long todayVisits = todayRow != null ? todayRow.getLoginCount() : 0L;
-        LocalDate start = today.minusDays(6);
-        List<DailyMetricsEntity> recent = dailyMetricsRepository.findAllByStatDateBetween(start, today);
-        long weekChats = recent.stream().mapToLong(DailyMetricsEntity::getChatCount).sum();
-        long weekVisits = recent.stream().mapToLong(DailyMetricsEntity::getLoginCount).sum();
-        List<Profile> users = userRepository.findAll()
-            .stream()
-            .map(u -> Profile.builder()
-                .nickname(u.getNickname())
-                .email(u.getEmail())
-                .phoneNumber(u.getPhoneNumber())
-                .gender(u.getGender())
-                .age(u.getAge())
-                .build()
-            )
-            .toList();
+        DailyMetricPoint todayMetrics = loadTodayMetrics(today);
+        WeeklyMetricPoint recentWeekMetrics = loadRecentWeekMetrics(today);
+
+        List<Profile> users = loadAllProfiles();
+
         return AdminStats.builder()
-            .totalUsers(totalUsers)
-            .totalPosts(totalPosts)
-            .todayChats(todayChats)
-            .todayVisits(todayVisits)
-            .weekChats(weekChats)
-            .weekVisits(weekVisits)
-            .users(users)
-            .build();
+                .totalUsers(totalUsers)
+                .totalPosts(totalPosts)
+                .todayChats(todayMetrics.getChatCount())
+                .todayVisits(todayMetrics.getVisitCount())
+                .weekChats(recentWeekMetrics.getChatCount())
+                .weekVisits(recentWeekMetrics.getVisitCount())
+                .users(users)
+                .build();
     }
 
     public Page<AdminUserRow> findUsers(AdminUserSearchRequest request, Pageable pageable) {
@@ -324,4 +311,57 @@ public class AdminQueryService {
     private static long safe(Long v) {
         return v == null ? 0L : v;
     }
+
+
+    private DailyMetricPoint loadTodayMetrics(LocalDate date) {
+        DailyMetricsEntity entity = dailyMetricsRepository.findById(date).orElse(null);
+
+        long chats = entity != null ? safe((long) entity.getChatCount()) : 0L;
+        long visits = entity != null ? safe((long) entity.getLoginCount()) : 0L;
+
+        return DailyMetricPoint.builder()
+                .date(date)
+                .chatCount(chats)
+                .visitCount(visits)
+                .build();
+    }
+
+    private WeeklyMetricPoint loadRecentWeekMetrics(LocalDate today) {
+        LocalDate start = today.minusDays(6);
+        List<DailyMetricsEntity> metrics =
+                dailyMetricsRepository.findAllByStatDateBetween(start, today);
+
+        long chats = metrics.stream()
+                .mapToLong(e -> safe((long) e.getChatCount()))
+                .sum();
+        long visits = metrics.stream()
+                .mapToLong(e -> safe((long) e.getLoginCount()))
+                .sum();
+
+        return WeeklyMetricPoint.builder()
+                .year(today.getYear())
+                .week(0)
+                .chatCount(chats)
+                .visitCount(visits)
+                .start(start)
+                .end(today)
+                .build();
+    }
+
+    private List<Profile> loadAllProfiles() {
+        return userRepository.findAll().stream()
+                .map(this::toProfile)
+                .toList();
+    }
+
+    private Profile toProfile(UserEntity user) {
+        return Profile.builder()
+                .nickname(user.getNickname())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .gender(user.getGender())
+                .age(user.getAge())
+                .build();
+    }
+
 }
