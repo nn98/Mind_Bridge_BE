@@ -39,20 +39,9 @@ public class AuthService {
 
     @Transactional
     public void loginAndSetCookie(LoginRequest request, HttpServletResponse response) {
-        // 1. 사용자 인증
         UserEntity user = authenticateUser(request);
-
-        // 2. JWT 토큰 생성 및 쿠키 설정
-        String token = jwtUtil.generateToken(user.getEmail());
-        jwtUtil.setJwtCookie(response, token);
-
-        // 3. 마지막 로그인 시간 업데이트
-        updateLastLogin(user.getEmail());
-
-        // 4. 일일 접속자 수 카운트 증가
-        dailyMetricsService.increaseUserCount();
-
-        log.info("로그인 성공: {}", user.getEmail());
+        issueJwtCookie(response, user.getEmail());
+        recordLoginSuccess(user.getEmail());
     }
 
     public void logout(HttpServletResponse response) {
@@ -116,7 +105,16 @@ public class AuthService {
         }
     }
 
-    // ===== 내부 유틸/헬퍼 메서드 =====
+    private void issueJwtCookie(HttpServletResponse response, String email) {
+        String token = jwtUtil.generateToken(email);
+        jwtUtil.setJwtCookie(response, token);
+    }
+
+    private void recordLoginSuccess(String email) {
+        updateLastLogin(email);
+        dailyMetricsService.increaseUserCount();
+        log.info("로그인 성공: {}", email);
+    }
 
     private UserEntity authenticateUser(LoginRequest request) {
         UserEntity user = userRepository.findByEmail(request.getEmail())
