@@ -141,7 +141,7 @@ public class AdminQueryService {
         PostEntity post = postRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Post not found"));
         post.setVisibility(visibility);
-        postRepository.save(post); // ← 테스트가 기대하는 save 호출
+        postRepository.save(post);
     }
 
     @Transactional
@@ -155,7 +155,6 @@ public class AdminQueryService {
         return DailyMetricPoint.builder()
             .date(today)
             .chatCount(e != null ? safe((long)e.getChatCount()) : 0)
-            // getVisitCount() → getLoginCount()로 수정
             .visitCount(e != null ? safe((long)e.getLoginCount()) : 0)
             .build();
     }
@@ -165,7 +164,6 @@ public class AdminQueryService {
             .map(e -> DailyMetricPoint.builder()
                 .date(e.getStatDate())
                 .chatCount(safe((long)e.getChatCount()))
-                // getVisitCount() → getLoginCount()로 수정
                 .visitCount(safe((long)e.getLoginCount()))
                 .build())
             .toList();
@@ -185,7 +183,6 @@ public class AdminQueryService {
         return byWeek.entrySet().stream().map(entry -> {
             List<DailyMetricsEntity> list = entry.getValue();
             long chats = list.stream().mapToLong(r -> safe((long)r.getChatCount())).sum();
-            // getVisitCount() → getLoginCount()로 수정
             long visits = list.stream().mapToLong(r -> safe((long)r.getLoginCount())).sum();
             LocalDate any = list.get(0).getStatDate();
             int year = any.get(wf.weekBasedYear());
@@ -254,8 +251,6 @@ public class AdminQueryService {
             .age(u.getAge())
             .createdAt(toIso(u.getCreatedAt()))
             .updatedAt(toIso(u.getUpdatedAt()))
-            // .locked(Boolean.TRUE.equals(u.getLocked()))
-            // .active(Boolean.TRUE.equals(u.getActive()))
             .build();
     }
 
@@ -266,8 +261,8 @@ public class AdminQueryService {
         return AdminPostRow.builder()
             .id(p.getPostId())
             .title(p.getTitle())
-            .userNickname(author != null ? author.getNickname() : "탈퇴한 사용자")  // ✅ JOIN 결과
-            .userEmail(author != null ? author.getEmail() : "deleted@user.com")    // ✅ JOIN 결과
+            .userNickname(author != null ? author.getNickname() : "탈퇴한 사용자")
+            .userEmail(author != null ? author.getEmail() : "deleted@user.com")
             .visibility(p.getVisibility())
             .createdAt(p.getCreatedAt().toString())
             .likeCount(p.getLikeCount())
@@ -275,7 +270,6 @@ public class AdminQueryService {
     }
 
     private AdminPostDetail toPostDetail(PostEntity p) {
-        // ✅ JOIN으로 작성자 정보 조회
         UserEntity author = userRepository.findById(p.getUserId())
             .orElse(null);
 
@@ -283,8 +277,8 @@ public class AdminQueryService {
             .id(p.getPostId())
             .title(p.getTitle())
             .content(p.getContent())
-            .userNickname(author != null ? author.getNickname() : "탈퇴한 사용자")  // ✅ JOIN 결과
-            .userEmail(author != null ? author.getEmail() : "deleted@user.com")    // ✅ JOIN 결과
+            .userNickname(author != null ? author.getNickname() : "탈퇴한 사용자")
+            .userEmail(author != null ? author.getEmail() : "deleted@user.com")
             .visibility(p.getVisibility())
             .createdAt(p.getCreatedAt().toString())
             .updatedAt(p.getUpdatedAt().toString())
@@ -311,7 +305,6 @@ public class AdminQueryService {
     private static long safe(Long v) {
         return v == null ? 0L : v;
     }
-
 
     private DailyMetricPoint loadTodayMetrics(LocalDate date) {
         DailyMetricsEntity entity = dailyMetricsRepository.findById(date).orElse(null);
