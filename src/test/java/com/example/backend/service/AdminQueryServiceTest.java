@@ -153,6 +153,22 @@ class AdminQueryServiceTest {
 	}
 
 	@Test
+	@DisplayName("사용자 검색 결과가 없을 때 빈 페이지를 반환")
+	void findUsers_emptyResult() {
+		AdminUserSearchRequest request = AdminUserSearchRequest.builder()
+				.q("없는사람")
+				.role("USER")
+				.build();
+		Page<UserEntity> emptyPage = Page.empty();
+		given(userRepository.findAll(any(Specification.class), any(Pageable.class)))
+				.willReturn(emptyPage);
+
+		Page<AdminUserRow> result = adminQueryService.findUsers(request, PageRequest.of(0, 20));
+
+		assertThat(result.getContent()).isEmpty();
+	}
+
+	@Test
 	@DisplayName("사용자 상세 조회")
 	void getUserDetail() {
 		given(userRepository.findById(DEFAULT_USER_ID)).willReturn(Optional.of(testUser));
