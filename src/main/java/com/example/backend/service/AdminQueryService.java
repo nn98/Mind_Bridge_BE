@@ -283,59 +283,112 @@ public class AdminQueryService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (StringUtils.hasText(request.getQ())) {
-                String keyword = request.getQ();
-                String pattern = "%" + keyword.toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("nickname")), pattern),
-                        cb.like(cb.lower(root.get("email")), pattern),
-                        cb.like(root.get("phoneNumber"), "%" + keyword + "%")
-                ));
-            }
-
-            if (StringUtils.hasText(request.getRole())) {
-                predicates.add(cb.equal(root.get("role"), request.getRole()));
-            }
-            if (StringUtils.hasText(request.getGender())) {
-                predicates.add(cb.equal(root.get("gender"), request.getGender()));
-            }
-            if (request.getAgeFrom() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("age"), request.getAgeFrom()));
-            }
-            if (request.getAgeTo() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("age"), request.getAgeTo()));
-            }
+            addUserKeywordPredicate(predicates, root, cb, request.getQ());
+            addUserRolePredicate(predicates, root, cb, request.getRole());
+            addUserGenderPredicate(predicates, root, cb, request.getGender());
+            addUserAgeFromPredicate(predicates, root, cb, request.getAgeFrom());
+            addUserAgeToPredicate(predicates, root, cb, request.getAgeTo());
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private void addUserKeywordPredicate(List<Predicate> predicates,
+                                         jakarta.persistence.criteria.Root<UserEntity> root,
+                                         jakarta.persistence.criteria.CriteriaBuilder cb,
+                                         String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return;
+        }
+        String pattern = "%" + keyword.toLowerCase() + "%";
+        predicates.add(cb.or(
+                cb.like(cb.lower(root.get("nickname")), pattern),
+                cb.like(cb.lower(root.get("email")), pattern),
+                cb.like(root.get("phoneNumber"), "%" + keyword + "%")
+        ));
+    }
+
+    private void addUserRolePredicate(List<Predicate> predicates,
+                                      jakarta.persistence.criteria.Root<UserEntity> root,
+                                      jakarta.persistence.criteria.CriteriaBuilder cb,
+                                      String role) {
+        if (!StringUtils.hasText(role)) {
+            return;
+        }
+        predicates.add(cb.equal(root.get("role"), role));
+    }
+
+    private void addUserGenderPredicate(List<Predicate> predicates,
+                                        jakarta.persistence.criteria.Root<UserEntity> root,
+                                        jakarta.persistence.criteria.CriteriaBuilder cb,
+                                        String gender) {
+        if (!StringUtils.hasText(gender)) {
+            return;
+        }
+        predicates.add(cb.equal(root.get("gender"), gender));
+    }
+
+    private void addUserAgeFromPredicate(List<Predicate> predicates,
+                                         jakarta.persistence.criteria.Root<UserEntity> root,
+                                         jakarta.persistence.criteria.CriteriaBuilder cb,
+                                         Integer ageFrom) {
+        if (ageFrom == null) {
+            return;
+        }
+        predicates.add(cb.greaterThanOrEqualTo(root.get("age"), ageFrom));
+    }
+
+    private void addUserAgeToPredicate(List<Predicate> predicates,
+                                       jakarta.persistence.criteria.Root<UserEntity> root,
+                                       jakarta.persistence.criteria.CriteriaBuilder cb,
+                                       Integer ageTo) {
+        if (ageTo == null) {
+            return;
+        }
+        predicates.add(cb.lessThanOrEqualTo(root.get("age"), ageTo));
     }
 
     private Specification<PostEntity> buildPostSpecification(AdminPostSearchRequest request) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if (StringUtils.hasText(request.getQ())) {
-                String pattern = "%" + request.getQ().toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), pattern),
-                        cb.like(cb.lower(root.get("content")), pattern),
-                        cb.like(cb.lower(root.get("author").get("nickname")), pattern),
-                        cb.like(cb.lower(root.get("author").get("email")), pattern)
-                ));
-            }
-
-            if (hasVisibilityFilter(request)) {
-                boolean isPublic = PUBLIC.equalsIgnoreCase(request.getVisibility());
-                predicates.add(cb.equal(root.get("isPublic"), isPublic));
-            }
+            addPostKeywordPredicate(predicates, root, cb, request.getQ());
+            addPostVisibilityPredicate(predicates, root, cb, request.getVisibility());
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
-    private boolean hasVisibilityFilter(AdminPostSearchRequest request) {
-        return StringUtils.hasText(request.getVisibility())
-                && !"all".equalsIgnoreCase(request.getVisibility());
+    private void addPostKeywordPredicate(List<Predicate> predicates,
+                                         jakarta.persistence.criteria.Root<PostEntity> root,
+                                         jakarta.persistence.criteria.CriteriaBuilder cb,
+                                         String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return;
+        }
+        String pattern = "%" + keyword.toLowerCase() + "%";
+        predicates.add(cb.or(
+                cb.like(cb.lower(root.get("title")), pattern),
+                cb.like(cb.lower(root.get("content")), pattern),
+                cb.like(cb.lower(root.get("author").get("nickname")), pattern),
+                cb.like(cb.lower(root.get("author").get("email")), pattern)
+        ));
+    }
+
+    private void addPostVisibilityPredicate(List<Predicate> predicates,
+                                            jakarta.persistence.criteria.Root<PostEntity> root,
+                                            jakarta.persistence.criteria.CriteriaBuilder cb,
+                                            String visibility) {
+        if (!hasVisibilityFilter(visibility)) {
+            return;
+        }
+        boolean isPublic = PUBLIC.equalsIgnoreCase(visibility);
+        predicates.add(cb.equal(root.get("isPublic"), isPublic));
+    }
+
+    private boolean hasVisibilityFilter(String visibility) {
+        return StringUtils.hasText(visibility)
+                && !"all".equalsIgnoreCase(visibility);
     }
 
     private DailyMetricPoint toDailyMetricPoint(DailyMetricsEntity entity) {
