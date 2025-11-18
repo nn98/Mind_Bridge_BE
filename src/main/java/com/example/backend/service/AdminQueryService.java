@@ -112,21 +112,12 @@ public class AdminQueryService {
 
     public DailyMetricPoint getTodayMetrics() {
         LocalDate today = LocalDate.now();
-        DailyMetricsEntity e = dailyMetricsRepository.findById(today).orElse(null);
-        return DailyMetricPoint.builder()
-                .date(today)
-                .chatCount(e != null ? safe((long)e.getChatCount()) : 0)
-                .visitCount(e != null ? safe((long)e.getLoginCount()) : 0)
-                .build();
+        return loadTodayMetrics(today);
     }
 
     public List<DailyMetricPoint> getDailyRange(LocalDate start, LocalDate end) {
         return dailyMetricsRepository.findAllByStatDateBetween(start, end).stream()
-                .map(e -> DailyMetricPoint.builder()
-                        .date(e.getStatDate())
-                        .chatCount(safe((long)e.getChatCount()))
-                        .visitCount(safe((long)e.getLoginCount()))
-                        .build())
+                .map(this::toDailyMetricPoint)
                 .toList();
     }
 
@@ -375,6 +366,14 @@ public class AdminQueryService {
     private boolean hasVisibilityFilter(AdminPostSearchRequest request) {
         return StringUtils.hasText(request.getVisibility())
                 && !"all".equalsIgnoreCase(request.getVisibility());
+    }
+
+    private DailyMetricPoint toDailyMetricPoint(DailyMetricsEntity entity) {
+        return DailyMetricPoint.builder()
+                .date(entity.getStatDate())
+                .chatCount(safe((long) entity.getChatCount()))
+                .visitCount(safe((long) entity.getLoginCount()))
+                .build();
     }
 
 }
