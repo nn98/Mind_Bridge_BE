@@ -2,11 +2,13 @@
 package com.example.backend.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@AllArgsConstructor
 public class FindIdRequest {
 
     @NotBlank(message = "전화번호는 필수입니다")
