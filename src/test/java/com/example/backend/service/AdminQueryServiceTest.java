@@ -270,7 +270,7 @@ class AdminQueryServiceTest {
 	@Test
 	@DisplayName("게시글 삭제")
 	void deletePost() {
-		adminQueryService.deletePost(DEFAULT_POST_ID, "테스트 삭제");
+		adminQueryService.deletePost(DEFAULT_POST_ID);
 
 		verify(postRepository).deleteById(DEFAULT_POST_ID);
 	}
@@ -278,7 +278,7 @@ class AdminQueryServiceTest {
 	@Test
 	@DisplayName("존재하지 않는 게시글 삭제 시 예외는 발생하지 않음 - 멱등성")
 	void deletePostNotCauseException() {
-		assertThatCode(() -> adminQueryService.deletePost(999L, "테스트 삭제"))
+		assertThatCode(() -> adminQueryService.deletePost(999L))
 				.doesNotThrowAnyException();
 
 		verify(postRepository).deleteById(999L);

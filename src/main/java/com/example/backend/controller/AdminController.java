@@ -105,7 +105,7 @@ public class AdminController {
 
     @DeleteMapping("/posts/{id}")
     public ResponseEntity<ApiResponse<Object>> deletePost(@PathVariable Long id, @RequestParam(required = false) String reason) {
-        adminQueryService.deletePost(id, reason);
+        adminQueryService.deletePost(id);
         return ResponseEntity.ok(ApiResponse.success(null, "게시글이 성공적으로 삭제되었습니다."));
     }
 
