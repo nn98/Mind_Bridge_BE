@@ -94,8 +94,7 @@ class ChatServiceTest {
 	@DisplayName("세션별 메시지 조회 테스트 - 기존 메서드")
 	void getMessagesBySessionId_Success() {
 		List<ChatMessageEntity> mockMessages = List.of(testUserMessage, testAiMessage);
-		when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(SESSION_ID))
-				.thenReturn(mockMessages);
+		when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(SESSION_ID)).thenReturn(mockMessages);
 
 		List<ChatMessageEntity> result = chatService.getMessagesBySessionId(SESSION_ID);
 
@@ -127,19 +126,16 @@ class ChatServiceTest {
 
 	@Test
 	@DisplayName("세션 저장 성공 테스트")
-	void saveSession_Success() {
-		// Given
+	void saveSession_success() {
 		when(chatMapper.toEntity(testSessionRequest)).thenReturn(testSession);
 		when(chatSessionRepository.save(testSession)).thenReturn(testSession);
 
-		// When
 		ChatSessionEntity result = chatService.saveSession(testSessionRequest);
 
-		// Then
 		assertThat(result).isNotNull();
-		assertThat(result.getSessionId()).isEqualTo("test-session-id");
-		assertThat(result.getUserEmail()).isEqualTo("test@example.com");
-		assertThat(result.getUserName()).isEqualTo("테스트 사용자");
+		assertThat(result.getSessionId()).isEqualTo(SESSION_ID);
+		assertThat(result.getUserEmail()).isEqualTo(USER_EMAIL);
+		assertThat(result.getUserName()).isEqualTo(USER_NAME);
 
 		verify(chatMapper).toEntity(testSessionRequest);
 		verify(chatSessionRepository).save(testSession);
@@ -147,28 +143,25 @@ class ChatServiceTest {
 
 	@Test
 	@DisplayName("분석 결과 저장 테스트")
-	void saveAnalysis_Success() {
-		// Given
+	void saveAnalysis_success() {
 		Map<String, Object> payload = Map.of(
-			"session_id", "test-session-id",
-			"user_email", "test@example.com",
-			"user_name", "테스트 사용자",
-			"summary", "상담 요약",
-			"emotions", "{\"joy\": 0.3, \"sadness\": 0.7}",
-			"risk_factors", "우울 증상",
-			"primary_risk", "중간",
-			"protective_factors", "가족 지지"
+				"session_id", SESSION_ID,
+				"user_email", USER_EMAIL,
+				"user_name", USER_NAME,
+				"summary", "상담 요약",
+				"emotions", "{\"joy\": 0.3, \"sadness\": 0.7}",
+				"risk_factors", "우울 증상",
+				"primary_risk", "중간",
+				"protective_factors", "가족 지지"
 		);
 
 		when(chatMapper.toAnalysisEntity(payload)).thenReturn(testSession);
 		when(chatSessionRepository.save(testSession)).thenReturn(testSession);
 
-		// When
 		ChatSessionEntity result = chatService.saveAnalysis(payload);
 
-		// Then
 		assertThat(result).isNotNull();
-		assertThat(result.getSessionId()).isEqualTo("test-session-id");
+		assertThat(result.getSessionId()).isEqualTo(SESSION_ID);
 		assertThat(result.getSummary()).isEqualTo("테스트 상담");
 
 		verify(chatMapper).toAnalysisEntity(payload);
@@ -177,44 +170,32 @@ class ChatServiceTest {
 
 	@Test
 	@DisplayName("세션 업데이트 성공 테스트")
-	void updateSession_Success() {
-		// Given
-		String sessionId = "test-session-id";
-
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.of(testSession));
+	void updateSession_success() {
+		when(chatSessionRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(testSession));
 		when(chatSessionRepository.save(testSession)).thenReturn(testSession);
 
-		// When
-		ChatSessionEntity result = chatService.updateSession(sessionId, testSessionRequest);
+		ChatSessionEntity result = chatService.updateSession(SESSION_ID, testSessionRequest);
 
-		// Then
 		assertThat(result).isNotNull();
-		assertThat(result.getSessionId()).isEqualTo(sessionId);
+		assertThat(result.getSessionId()).isEqualTo(SESSION_ID);
 
-		verify(chatSessionRepository).findBySessionId(sessionId);
+		verify(chatSessionRepository).findBySessionId(SESSION_ID);
 		verify(chatMapper).updateEntity(testSession, testSessionRequest);
 		verify(chatSessionRepository).save(testSession);
 	}
 
 	@Test
 	@DisplayName("세션 업데이트 - 세션 없음 예외 테스트")
-	void updateSession_SessionNotFound_ThrowsException() {
-		// Given
-		String sessionId = "non-existent-session";
+	void updateSession_sessionNotFound_throwsException() {
+		String missingId = "non-existent-session";
+		when(chatSessionRepository.findBySessionId(missingId)).thenReturn(Optional.empty());
 
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.empty());
+		assertThatThrownBy(() -> chatService.updateSession(missingId, testSessionRequest))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessageContaining("세션을 찾을 수 없습니다: " + missingId);
 
-		// When & Then
-		assertThatThrownBy(() -> chatService.updateSession(sessionId, testSessionRequest))
-			.isInstanceOf(NotFoundException.class)
-			.hasMessageContaining("세션을 찾을 수 없습니다: " + sessionId);
-
-		verify(chatSessionRepository).findBySessionId(sessionId);
+		verify(chatSessionRepository).findBySessionId(missingId);
 	}
-
-	// === 조회 관련 테스트 ===
 
 	@Test
 	@DisplayName("이메일과 이름으로 세션 조회 테스트")
