@@ -75,19 +75,16 @@ class ChatServiceTest {
 	@Test
 	@DisplayName("메시지 저장 성공 테스트")
 	void saveMessage_Success() {
-		// Given
 		when(chatMapper.toEntity(testMessageRequest)).thenReturn(testUserMessage);
 		when(chatMessageRepository.save(testUserMessage)).thenReturn(testUserMessage);
 
-		// When
 		ChatMessageEntity result = chatService.saveMessage(testMessageRequest);
 
-		// Then
 		assertThat(result).isNotNull();
 		assertThat(result.getMessageId()).isEqualTo(1L);
-		assertThat(result.getSessionId()).isEqualTo("test-session-id");
+		assertThat(result.getSessionId()).isEqualTo(SESSION_ID);
 		assertThat(result.getMessageType()).isEqualTo(ChatMessageType.USER);
-		assertThat(result.getMessageContent()).isEqualTo("안녕하세요");
+		assertThat(result.getMessageContent()).isEqualTo(USER_MESSAGE);
 
 		verify(chatMapper).toEntity(testMessageRequest);
 		verify(chatMessageRepository).save(testUserMessage);
@@ -96,58 +93,37 @@ class ChatServiceTest {
 	@Test
 	@DisplayName("세션별 메시지 조회 테스트 - 기존 메서드")
 	void getMessagesBySessionId_Success() {
-		// Given
-		String sessionId = "test-session-id";
 		List<ChatMessageEntity> mockMessages = List.of(testUserMessage, testAiMessage);
+		when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(SESSION_ID))
+				.thenReturn(mockMessages);
 
-		// ✅ 올바른 Repository 메서드 Mock
-		when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId))
-			.thenReturn(mockMessages);
+		List<ChatMessageEntity> result = chatService.getMessagesBySessionId(SESSION_ID);
 
-		// When
-		List<ChatMessageEntity> result = chatService.getMessagesBySessionId(sessionId);
-
-		// Then
 		assertThat(result).hasSize(2);
 		assertThat(result.get(0).getMessageType()).isEqualTo(ChatMessageType.USER);
 		assertThat(result.get(1).getMessageType()).isEqualTo(ChatMessageType.AI);
 
-		verify(chatMessageRepository).findBySessionIdOrderByCreatedAtAsc(sessionId);
+		verify(chatMessageRepository).findBySessionIdOrderByCreatedAtAsc(SESSION_ID);
 	}
 
 	@Test
 	@DisplayName("세션별 메시지 조회 테스트 - 권한 확인")
-	void getMessagesBySessionId_WithAuth_Success() {
-		// Given
-		String sessionId = "test-session-id";
-		String userEmail = "test@example.com";
+	void getMessagesBySessionId_withAuth_success() {
 		List<ChatMessageEntity> mockMessages = List.of(testUserMessage, testAiMessage);
 		List<ChatMessageDto> mockDtos = List.of(testMessageDto);
 
-		// ✅ 권한 확인 Mock
-		when(chatSessionRepository.existsBySessionIdAndUserEmail(sessionId, userEmail))
-			.thenReturn(true);
+		when(chatSessionRepository.existsBySessionIdAndUserEmail(SESSION_ID, USER_EMAIL)).thenReturn(true);
+		when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(SESSION_ID)).thenReturn(mockMessages);
+		when(chatMapper.toMessageDtoList(mockMessages)).thenReturn(mockDtos);
 
-		// ✅ 메시지 조회 Mock
-		when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId))
-			.thenReturn(mockMessages);
+		List<ChatMessageDto> result = chatService.getMessagesBySessionId(SESSION_ID, USER_EMAIL);
 
-		// ✅ Mapper Mock
-		when(chatMapper.toMessageDtoList(mockMessages))
-			.thenReturn(mockDtos);
-
-		// When
-		List<ChatMessageDto> result = chatService.getMessagesBySessionId(sessionId, userEmail);
-
-		// Then
 		assertThat(result).hasSize(1);
 
-		verify(chatSessionRepository).existsBySessionIdAndUserEmail(sessionId, userEmail);
-		verify(chatMessageRepository).findBySessionIdOrderByCreatedAtAsc(sessionId);
+		verify(chatSessionRepository).existsBySessionIdAndUserEmail(SESSION_ID, USER_EMAIL);
+		verify(chatMessageRepository).findBySessionIdOrderByCreatedAtAsc(SESSION_ID);
 		verify(chatMapper).toMessageDtoList(mockMessages);
 	}
-
-	// === 세션 관련 테스트 ===
 
 	@Test
 	@DisplayName("세션 저장 성공 테스트")
