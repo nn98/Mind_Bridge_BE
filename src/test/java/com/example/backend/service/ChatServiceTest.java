@@ -199,137 +199,105 @@ class ChatServiceTest {
 
 	@Test
 	@DisplayName("이메일과 이름으로 세션 조회 테스트")
-	void getSessionsByEmailAndName_Success() {
-		// Given
-		String userEmail = "test@example.com";
-		String userName = "테스트 사용자";
+	void getSessionsByEmailAndName_success() {
 		List<ChatSessionEntity> mockSessions = List.of(testSession);
+		when(chatSessionRepository
+				.findAllByUserEmailAndUserNameOrderBySessionIdDesc(USER_EMAIL, USER_NAME))
+				.thenReturn(mockSessions);
 
-		when(chatSessionRepository.findAllByUserEmailAndUserNameOrderBySessionIdDesc(userEmail, userName))
-			.thenReturn(mockSessions);
+		List<ChatSessionEntity> result =
+				chatService.getSessionsByEmailAndName(USER_EMAIL, USER_NAME);
 
-		// When
-		List<ChatSessionEntity> result = chatService.getSessionsByEmailAndName(userEmail, userName);
-
-		// Then
 		assertThat(result).hasSize(1);
-		assertThat(result.get(0).getSessionId()).isEqualTo("test-session-id");
+		assertThat(result.get(0).getSessionId()).isEqualTo(SESSION_ID);
 
-		verify(chatSessionRepository).findAllByUserEmailAndUserNameOrderBySessionIdDesc(userEmail, userName);
+		verify(chatSessionRepository)
+				.findAllByUserEmailAndUserNameOrderBySessionIdDesc(USER_EMAIL, USER_NAME);
 	}
 
 	@Test
 	@DisplayName("세션 ID로 세션 조회 성공 테스트")
-	void getSessionById_Success() {
-		// Given
-		String sessionId = "test-session-id";
+	void getSessionById_success() {
+		when(chatSessionRepository.findBySessionId(SESSION_ID))
+				.thenReturn(Optional.of(testSession));
+		when(chatMapper.toDto(testSession)).thenReturn(testSessionDto);
 
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.of(testSession));
-		// ✅ Mapper Mock 추가 (DTO 반환이므로 필수)
-		when(chatMapper.toDto(testSession))
-			.thenReturn(testSessionDto);
+		Optional<ChatSessionDto> result = chatService.getSessionById(SESSION_ID);
 
-		// When
-		Optional<ChatSessionDto> result = chatService.getSessionById(sessionId);
-
-		// Then
 		assertThat(result).isPresent();
-		assertThat(result.get().sessionId()).isEqualTo(sessionId);
+		assertThat(result.get().sessionId()).isEqualTo(SESSION_ID);
 
-		verify(chatSessionRepository).findBySessionId(sessionId);
-		verify(chatMapper).toDto(testSession); // ✅ Mapper 호출 검증
+		verify(chatSessionRepository).findBySessionId(SESSION_ID);
+		verify(chatMapper).toDto(testSession);
 	}
 
 	@Test
 	@DisplayName("세션 ID로 세션 조회 성공 테스트 - Entity용")
-	void getSessionByIdEntity_Success() {
-		// Given
-		String sessionId = "test-session-id";
+	void getSessionByIdEntity_success() {
+		when(chatSessionRepository.findBySessionId(SESSION_ID))
+				.thenReturn(Optional.of(testSession));
 
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.of(testSession));
+		Optional<ChatSessionEntity> result =
+				chatService.getSessionByIdEntity(SESSION_ID);
 
-		// When - ✅ Entity 반환 메서드 호출
-		Optional<ChatSessionEntity> result = chatService.getSessionByIdEntity(sessionId);
-
-		// Then
 		assertThat(result).isPresent();
-		assertThat(result.get().getSessionId()).isEqualTo(sessionId);
+		assertThat(result.get().getSessionId()).isEqualTo(SESSION_ID);
 
-		verify(chatSessionRepository).findBySessionId(sessionId);
+		verify(chatSessionRepository).findBySessionId(SESSION_ID);
 	}
 
 	@Test
 	@DisplayName("세션 ID로 세션 조회 - 없는 세션")
-	void getSessionById_NotFound() {
-		// Given
-		String sessionId = "non-existent-session";
+	void getSessionById_notFound_returnsEmpty() {
+		String missingId = "non-existent-session";
+		when(chatSessionRepository.findBySessionId(missingId))
+				.thenReturn(Optional.empty());
 
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.empty());
+		Optional<ChatSessionDto> result = chatService.getSessionById(missingId);
 
-		// When
-		Optional<ChatSessionDto> result = chatService.getSessionById(sessionId);
-
-		// Then
 		assertThat(result).isEmpty();
 
-		verify(chatSessionRepository).findBySessionId(sessionId);
+		verify(chatSessionRepository).findBySessionId(missingId);
 	}
-
-	// === 상태 관련 테스트 ===
 
 	@Test
 	@DisplayName("사용자 이메일로 세션 조회 테스트")
-	void getChatSessionsByUserEmail_Success() {
-		// Given
-		String userEmail = "test@example.com";
+	void getChatSessionsByUserEmail_success() {
 		List<ChatSessionEntity> mockEntities = List.of(testSession);
 		List<ChatSessionDto> mockDtos = List.of(testSessionDto);
 
-		// ✅ Repository Mock 설정
-		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(userEmail))
-			.thenReturn(mockEntities);
+		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(USER_EMAIL))
+				.thenReturn(mockEntities);
+		when(chatMapper.toSessionDtoList(mockEntities)).thenReturn(mockDtos);
 
-		// ✅ Mapper Mock 설정
-		when(chatMapper.toSessionDtoList(mockEntities))
-			.thenReturn(mockDtos);
+		List<ChatSessionDto> result =
+				chatService.getChatSessionsByUserEmail(USER_EMAIL);
 
-		// When
-		List<ChatSessionDto> result = chatService.getChatSessionsByUserEmail(userEmail);
-
-		// Then
 		assertThat(result).hasSize(1);
-		assertThat(result.get(0).sessionId()).isEqualTo("test-session-id");
-		assertThat(result.get(0).userEmail()).isEqualTo(userEmail);
+		assertThat(result.get(0).sessionId()).isEqualTo(SESSION_ID);
+		assertThat(result.get(0).userEmail()).isEqualTo(USER_EMAIL);
 
-		verify(chatSessionRepository).findByUserEmailOrderByCreatedAtDesc(userEmail);
+		verify(chatSessionRepository).findByUserEmailOrderByCreatedAtDesc(USER_EMAIL);
 		verify(chatMapper).toSessionDtoList(mockEntities);
 	}
 
 	@Test
 	@DisplayName("사용자 이메일로 세션 조회 - 빈 결과")
-	void getChatSessionsByUserEmail_EmptyResult() {
-		// Given
-		String userEmail = "nonexistent@example.com";
+	void getChatSessionsByUserEmail_emptyResult_returnsEmptyList() {
+		String unknownEmail = "nonexistent@example.com";
 
-		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(userEmail))
-			.thenReturn(List.of());
-		when(chatMapper.toSessionDtoList(List.of()))
-			.thenReturn(List.of());
+		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(unknownEmail))
+				.thenReturn(List.of());
+		when(chatMapper.toSessionDtoList(anyList())).thenReturn(List.of());
 
-		// When
-		List<ChatSessionDto> result = chatService.getChatSessionsByUserEmail(userEmail);
+		List<ChatSessionDto> result =
+				chatService.getChatSessionsByUserEmail(unknownEmail);
 
-		// Then
 		assertThat(result).isEmpty();
 
-		verify(chatSessionRepository).findByUserEmailOrderByCreatedAtDesc(userEmail);
-		verify(chatMapper).toSessionDtoList(List.of());
+		verify(chatSessionRepository).findByUserEmailOrderByCreatedAtDesc(unknownEmail);
+		verify(chatMapper).toSessionDtoList(anyList());
 	}
-
-	// === 삭제 관련 테스트 ===
 
 	@Test
 	@DisplayName("세션 삭제 성공 테스트")
