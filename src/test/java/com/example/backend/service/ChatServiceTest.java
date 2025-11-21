@@ -301,37 +301,29 @@ class ChatServiceTest {
 
 	@Test
 	@DisplayName("세션 삭제 성공 테스트")
-	void deleteSession_Success() {
-		// Given
-		String sessionId = "test-session-id";
+	void deleteSession_success() {
+		when(chatSessionRepository.findBySessionId(SESSION_ID))
+				.thenReturn(Optional.of(testSession));
 
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.of(testSession));
+		chatService.deleteSession(SESSION_ID);
 
-		// When
-		chatService.deleteSession(sessionId);
-
-		// Then
-		verify(chatSessionRepository).findBySessionId(sessionId);
-		verify(chatMessageRepository).deleteAllBySessionId(sessionId);
+		verify(chatSessionRepository).findBySessionId(SESSION_ID);
+		verify(chatMessageRepository).deleteAllBySessionId(SESSION_ID);
 		verify(chatSessionRepository).delete(testSession);
 	}
 
 	@Test
 	@DisplayName("세션 삭제 - 세션 없음 예외")
-	void deleteSession_SessionNotFound_ThrowsException() {
-		// Given
-		String sessionId = "non-existent-session";
+	void deleteSession_sessionNotFound_throwsException() {
+		String missingId = "non-existent-session";
+		when(chatSessionRepository.findBySessionId(missingId))
+				.thenReturn(Optional.empty());
 
-		when(chatSessionRepository.findBySessionId(sessionId))
-			.thenReturn(Optional.empty());
+		assertThatThrownBy(() -> chatService.deleteSession(missingId))
+				.isInstanceOf(NotFoundException.class)
+				.hasMessageContaining("세션을 찾을 수 없습니다: " + missingId);
 
-		// When & Then
-		assertThatThrownBy(() -> chatService.deleteSession(sessionId))
-			.isInstanceOf(NotFoundException.class)
-			.hasMessageContaining("세션을 찾을 수 없습니다: " + sessionId);
-
-		verify(chatSessionRepository).findBySessionId(sessionId);
+		verify(chatSessionRepository).findBySessionId(missingId);
 	}
 
 	private ChatSessionEntity buildSession(LocalDateTime now) {
