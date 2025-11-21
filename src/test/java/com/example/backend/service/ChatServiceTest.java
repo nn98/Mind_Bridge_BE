@@ -33,6 +33,12 @@ import com.example.backend.repository.ChatSessionRepository;
 @DisplayName("ChatService 테스트")
 class ChatServiceTest {
 
+	private static final String SESSION_ID = "test-session-id";
+	private static final String USER_EMAIL = "test@example.com";
+	private static final String USER_NAME = "테스트 사용자";
+	private static final String USER_MESSAGE = "안녕하세요";
+	private static final String AI_MESSAGE = "안녕하세요! 무엇을 도와드릴까요?";
+
 	@Mock
 	private ChatMessageRepository chatMessageRepository;
 
@@ -56,85 +62,15 @@ class ChatServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		// ChatSessionEntity 테스트 데이터
-		testSession = ChatSessionEntity.builder()
-			.sessionId("test-session-id")
-			.userEmail("test@example.com")
-			.userName("테스트 사용자")
-			.summary("테스트 상담")
-			.emotions("{\"joy\": 0.3, \"sadness\": 0.7}")
-			.primaryRisk("중간")
-			.riskFactors("우울 증상")
-			.protectiveFactors("가족 지지")
-			.createdAt(LocalDateTime.now())
-			.updatedAt(LocalDateTime.now())
-			.build();
-
-		// ChatMessageEntity 테스트 데이터
-		testUserMessage = ChatMessageEntity.builder()
-			.messageId(1L)
-			.sessionId("test-session-id")
-			.messageType(ChatMessageType.USER)
-			.messageContent("안녕하세요")
-			.userEmail("test@example.com")
-			.chatStyle("default")
-			.createdAt(LocalDateTime.now().minusMinutes(5))
-			.build();
-
-		testAiMessage = ChatMessageEntity.builder()
-			.messageId(2L)
-			.sessionId("test-session-id")
-			.messageType(ChatMessageType.AI)
-			.messageContent("안녕하세요! 무엇을 도와드릴까요?")
-			.emotion("{\"joy\": 0.9}")
-			.userEmail("test@example.com")
-			.chatStyle("empathetic")
-			.createdAt(LocalDateTime.now())
-			.build();
-
-		// Request DTO 테스트 데이터
-		testSessionRequest = SessionRequest.builder()
-			.sessionId("test-session-id")
-			.userEmail("test@example.com")
-			.userName("테스트 사용자")
-			.summary("테스트 상담")
-			.build();
-
-		testMessageRequest = ChatMessageRequest.builder()
-			.sessionId("test-session-id")
-			.messageType(ChatMessageType.USER)
-			.messageContent("안녕하세요")
-			.userEmail("test@example.com")
-			.chatStyle("default")
-			.build();
-
-		// Response DTO 테스트 데이터
-		testSessionDto = new ChatSessionDto(
-			"test-session-id",
-			"test@example.com",
-			"테스트 사용자",
-			"테스트 상담",
-			Map.of("joy", 0.3, "sadness", 0.7),
-			"중간",
-			"가족 지지",
-			"우울 증상",
-			LocalDateTime.now(),
-			LocalDateTime.now()
-		);
-
-		testMessageDto = new ChatMessageDto(
-			1L,
-			"test-session-id",
-			ChatMessageType.USER,
-			"안녕하세요",
-			null,
-			"test@example.com",
-			"default",
-			LocalDateTime.now()
-		);
+		LocalDateTime now = LocalDateTime.now();
+		testSession = buildSession(now);
+		testUserMessage = buildUserMessage(now);
+		testAiMessage = buildAiMessage(now);
+		testSessionRequest = buildSessionRequest();
+		testMessageRequest = buildMessageRequest();
+		testSessionDto = buildSessionDto(now);
+		testMessageDto = buildMessageDto(now);
 	}
-
-	// === 메시지 관련 테스트 ===
 
 	@Test
 	@DisplayName("메시지 저장 성공 테스트")
@@ -472,4 +408,92 @@ class ChatServiceTest {
 
 		verify(chatSessionRepository).findBySessionId(sessionId);
 	}
+
+	private ChatSessionEntity buildSession(LocalDateTime now) {
+		return ChatSessionEntity.builder()
+				.sessionId(SESSION_ID)
+				.userEmail(USER_EMAIL)
+				.userName(USER_NAME)
+				.summary("테스트 상담")
+				.emotions("{\"joy\": 0.3, \"sadness\": 0.7}")
+				.primaryRisk("중간")
+				.riskFactors("우울 증상")
+				.protectiveFactors("가족 지지")
+				.createdAt(now)
+				.updatedAt(now)
+				.build();
+	}
+
+	private ChatMessageEntity buildUserMessage(LocalDateTime now) {
+		return ChatMessageEntity.builder()
+				.messageId(1L)
+				.sessionId(SESSION_ID)
+				.messageType(ChatMessageType.USER)
+				.messageContent(USER_MESSAGE)
+				.userEmail(USER_EMAIL)
+				.chatStyle("default")
+				.createdAt(now.minusMinutes(5))
+				.build();
+	}
+
+	private ChatMessageEntity buildAiMessage(LocalDateTime now) {
+		return ChatMessageEntity.builder()
+				.messageId(2L)
+				.sessionId(SESSION_ID)
+				.messageType(ChatMessageType.AI)
+				.messageContent(AI_MESSAGE)
+				.emotion("{\"joy\": 0.9}")
+				.userEmail(USER_EMAIL)
+				.chatStyle("empathetic")
+				.createdAt(now)
+				.build();
+	}
+
+	private SessionRequest buildSessionRequest() {
+		return SessionRequest.builder()
+				.sessionId(SESSION_ID)
+				.userEmail(USER_EMAIL)
+				.userName(USER_NAME)
+				.summary("테스트 상담")
+				.build();
+	}
+
+	private ChatMessageRequest buildMessageRequest() {
+		return ChatMessageRequest.builder()
+				.sessionId(SESSION_ID)
+				.messageType(ChatMessageType.USER)
+				.messageContent(USER_MESSAGE)
+				.userEmail(USER_EMAIL)
+				.chatStyle("default")
+				.build();
+	}
+
+	private ChatSessionDto buildSessionDto(LocalDateTime now) {
+		return new ChatSessionDto(
+				SESSION_ID,
+				USER_EMAIL,
+				USER_NAME,
+				"테스트 상담",
+				Map.of("joy", 0.3, "sadness", 0.7),
+				"중간",
+				"가족 지지",
+				"우울 증상",
+				now,
+				now
+		);
+	}
+
+	private ChatMessageDto buildMessageDto(LocalDateTime now) {
+		return new ChatMessageDto(
+				1L,
+				SESSION_ID,
+				ChatMessageType.USER,
+				USER_MESSAGE,
+				null,
+				USER_EMAIL,
+				"default",
+				now
+		);
+	}
+
 }
