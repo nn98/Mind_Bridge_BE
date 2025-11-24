@@ -2,7 +2,6 @@ package com.example.backend.controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +23,6 @@ import com.example.backend.dto.chat.ChatMessageRequest;
 import com.example.backend.dto.chat.ChatSessionDto;
 import com.example.backend.dto.chat.SessionRequest;
 import com.example.backend.dto.common.ApiResponse;
-import com.example.backend.dto.emotion.EmotionRequest;
 import com.example.backend.entity.ChatMessageEntity;
 import com.example.backend.entity.ChatSessionEntity;
 import com.example.backend.security.SecurityUtil;
@@ -39,62 +37,57 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatController {
-
+    
     private final DailyMetricsService dailyMetricsService;
     private final SecurityUtil securityUtil;
     private final ChatService chatService;
-
-    // ================== FastAPI 연동 (공개 API) ==================
-
+    
     @PostMapping("/session/save")
     public ResponseEntity<ChatSessionEntity> receiveAnalysis(@RequestBody SessionRequest sessionRequest) {
-        // 공개 API - 인증 불필요 (FastAPI에서 호출)
-        log.info("📩 [Spring] FastAPI에서 받은 분석 결과: {}\n\t SessionRequest 객체: {}", sessionRequest.getSessionId(), sessionRequest);
+        log.info("FastAPI 분석 결과 수신 - sessionId: {}", sessionRequest.getSessionId());
+        
         ChatSessionEntity saved = chatService.saveSession(sessionRequest);
-        log.info("\t\t만들어진 엔티티: {}", saved);
-        log.info("💾 [Spring] DB 저장 완료: {}", saved.getSessionId());
         dailyMetricsService.increaseChatCount();
+        
         return ResponseEntity.ok(saved);
     }
-
+    
     @PostMapping("/message/save")
-    public ResponseEntity<ChatMessageEntity> saveMessage(@RequestBody ChatMessageRequest dto) {
-        // 공개 API - 인증 불필요 (FastAPI에서 호출)
-        log.info("dto: " + dto.toString());
-        ChatMessageEntity saved = chatService.saveMessage(dto);
+    public ResponseEntity<ChatMessageEntity> saveMessage(@RequestBody ChatMessageRequest request) {
+        log.info("FastAPI 메시지 저장 - sessionId: {}", request.getSessionId());
+        
+        ChatMessageEntity saved = chatService.saveMessage(request);
         return ResponseEntity.ok(saved);
     }
-
+    
     @GetMapping("/analysis/search")
     public ResponseEntity<List<ChatSessionEntity>> getCounsellings(
-        @RequestParam String email,
-        @RequestParam String name) {
-        // FastAPI에서 Spring으로 분석 결과 조회 (공개 API)
+            @RequestParam String email,
+            @RequestParam String name
+    ) {
         List<ChatSessionEntity> result = chatService.getSessionsByEmailAndName(email, name);
         return ResponseEntity.ok(result);
     }
-
-    // ================== 사용자 API (인증 필요) ==================
-
+    
     @GetMapping("/sessions")
-    @PreAuthorize("isAuthenticated()") // ✅ 인증된 사용자만
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ChatSessionDto>> getChatSessions(Authentication authentication) {
         String email = securityUtil.requirePrincipalEmail(authentication);
         List<ChatSessionDto> sessions = chatService.getChatSessionsByUserEmail(email);
-
+        
         return ResponseEntity.ok()
-            .cacheControl(CacheControl.noStore())
-            .header("Pragma", "no-cache")
-            .header("Expires", "0")
-            .body(sessions);
+                .cacheControl(CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .body(sessions);
     }
-
+    
     @GetMapping("/messages/{sessionId}")
-    @PreAuthorize("@chatAuth.canAccessSession(#sessionId, authentication.name) or hasRole('ADMIN')") // ✅ ChatAuth 사용
+    @PreAuthorize("@chatAuth.canAccessSession(#sessionId, authentication.name) or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<ChatMessageDto>>> getMessages(
-        @PathVariable String sessionId,
-        Authentication authentication) {
-
+            @PathVariable String sessionId,
+            Authentication authentication
+    ) {
         try {
             List<ChatMessageDto> result = chatService.getMessagesBySessionId(sessionId, authentication.getName());
             return ResponseEntity.ok(ApiResponse.success(result, "메시지를 성공적으로 조회했습니다."));
@@ -104,26 +97,26 @@ public class ChatController {
             throw new ForbiddenException("세션 접근 권한이 없습니다.", "ACCESS_DENIED");
         }
     }
-
-    // ================== 추가 권한 검증 엔드포인트들 ==================
-
+    
     @GetMapping("/sessions/{sessionId}")
-    @PreAuthorize("@chatAuth.canAccessSession(#sessionId, authentication.name) or hasRole('ADMIN')") // ✅ ChatAuth 사용
+    @PreAuthorize("@chatAuth.canAccessSession(#sessionId, authentication.name) or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ChatSessionDto>> getChatSession(
-        @PathVariable String sessionId,
-        Authentication authentication) {
-
+            @PathVariable String sessionId,
+            Authentication authentication
+    ) {
         return chatService.getSessionById(sessionId)
-            .map(session -> ResponseEntity.ok(ApiResponse.success(session, "세션을 성공적으로 조회했습니다.")))
-            .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다.", "SESSION_NOT_FOUND", "sessionId"));
+                .map(session -> ResponseEntity.ok(
+                        ApiResponse.success(session, "세션을 성공적으로 조회했습니다.")
+                ))
+                .orElseThrow(() -> new NotFoundException("세션을 찾을 수 없습니다.", "SESSION_NOT_FOUND", "sessionId"));
     }
-
+    
     @DeleteMapping("/sessions/{sessionId}")
-    @PreAuthorize("@chatAuth.canDeleteSession(#sessionId, authentication.name) or hasRole('ADMIN')") // ✅ ChatAuth 사용
+    @PreAuthorize("@chatAuth.canDeleteSession(#sessionId, authentication.name) or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> deleteSession(
-        @PathVariable String sessionId,
-        Authentication authentication) {
-
+            @PathVariable String sessionId,
+            Authentication authentication
+    ) {
         chatService.deleteSession(sessionId);
         return ResponseEntity.ok(ApiResponse.success("세션이 삭제되었습니다."));
     }
