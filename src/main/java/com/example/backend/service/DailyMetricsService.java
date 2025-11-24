@@ -13,9 +13,9 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class DailyMetricsService {
-
+    
     private final DailyMetricsRepository dailyMetricsRepository;
-
+    
     @Transactional
     public void increaseUserCount() {
         LocalDate today = LocalDate.now();
@@ -24,7 +24,7 @@ public class DailyMetricsService {
             dailyMetricsRepository.save(metrics);
         }
     }
-
+    
     @Transactional
     public void increaseChatCount() {
         LocalDate today = LocalDate.now();
