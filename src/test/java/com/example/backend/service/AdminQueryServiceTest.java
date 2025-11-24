@@ -465,5 +465,4 @@ class AdminQueryServiceTest {
         assertThat(point.getChatCount()).isEqualTo(expectedChats);
         assertThat(point.getVisitCount()).isEqualTo(expectedVisits);
     }
-    
 }

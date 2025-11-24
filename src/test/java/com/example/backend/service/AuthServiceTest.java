@@ -188,5 +188,4 @@ class AuthServiceTest {
                 .phoneNumber(phoneNumber)
                 .build();
     }
-    
 }

@@ -472,5 +472,4 @@ public class AdminQueryService {
                 .mapToLong(e -> safe((long) e.getLoginCount()))
                 .sum();
     }
-
 }

@@ -449,5 +449,4 @@ class ChatServiceTest {
         assertThat(result).isPresent();
         assertThat(result.get().sessionId()).isEqualTo(expectedSessionId);
     }
-    
 }
