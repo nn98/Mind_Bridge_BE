@@ -307,4 +307,66 @@ class ChatControllerTest {
         then(chatAuth).should().canDeleteSession(SESSION_ID, USER_EMAIL);
         then(chatService).should().deleteSession(SESSION_ID);
     }
+    
+    @Test
+    @WithMockUser(username = USER_EMAIL, roles = "USER")
+    @DisplayName("GET /api/chat/sessions/{sessionId} (세션 없음) → 404 ProblemDetail")
+    void getChatSession_notFound_404() throws Exception {
+        given(chatAuth.canAccessSession(SESSION_ID, USER_EMAIL)).willReturn(true);
+        given(chatService.getSessionById(SESSION_ID)).willReturn(Optional.empty());
+        
+        mvc.perform(get(BASE_URL + "/sessions/{sessionId}", SESSION_ID)
+                        .with(user(USER_EMAIL)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404));
+    }
+    
+    @Test
+    @WithMockUser(username = USER_EMAIL, roles = "USER")
+    @DisplayName("GET /api/chat/messages/{sessionId} (서비스에서 NotFoundException) → 404 ProblemDetail")
+    void getMessages_notFound_404() throws Exception {
+        given(chatAuth.canAccessSession(SESSION_ID, USER_EMAIL)).willReturn(true);
+        willThrow(new com.example.backend.common.error.NotFoundException(
+                "세션을 찾을 수 없습니다.", "SESSION_NOT_FOUND", "sessionId"))
+                .given(chatService).getMessagesBySessionId(SESSION_ID, USER_EMAIL);
+        
+        mvc.perform(get(BASE_URL + "/messages/{sessionId}", SESSION_ID)
+                        .with(user(USER_EMAIL)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404));
+    }
+    
+    @Test
+    @WithMockUser(username = USER_EMAIL, roles = "USER")
+    @DisplayName("GET /api/chat/messages/{sessionId} (권한 없음) → 403 ProblemDetail")
+    void getMessages_forbidden_403() throws Exception {
+        willThrow(new com.example.backend.common.error.ForbiddenException(
+                "세션 접근 권한이 없습니다.", "ACCESS_DENIED"))
+                .given(chatService).getMessagesBySessionId(SESSION_ID, USER_EMAIL);
+        
+        mvc.perform(get(BASE_URL + "/messages/{sessionId}", SESSION_ID)
+                        .with(user(USER_EMAIL)))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+    
+    @Test
+    @WithMockUser(username = USER_EMAIL, roles = "USER")
+    @DisplayName("DELETE /api/chat/sessions/{sessionId} (서비스에서 NotFoundException) → 404 ProblemDetail")
+    void deleteSession_notFound_404() throws Exception {
+        given(chatAuth.canDeleteSession(SESSION_ID, USER_EMAIL)).willReturn(true);
+        willThrow(new com.example.backend.common.error.NotFoundException(
+                "세션을 찾을 수 없습니다.", "SESSION_NOT_FOUND", "sessionId"))
+                .given(chatService).deleteSession(SESSION_ID);
+        
+        mvc.perform(delete(BASE_URL + "/sessions/{sessionId}", SESSION_ID)
+                        .with(user(USER_EMAIL)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404));
+    }
 }
