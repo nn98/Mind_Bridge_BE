@@ -1,14 +1,18 @@
-// src/main/java/com/example/backend/dto/emotion/EmotionRequest.java
 package com.example.backend.dto.emotion;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
+@Builder
 public class EmotionRequest {
-    private String email;
-    private String text;
+    
+    @NotBlank
+    @Email
+    private final String email;
+    
+    @NotBlank
+    private final String text;
 }
