@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
+@Component
 @RequiredArgsConstructor
 public class EmotionParser {
     
@@ -22,10 +24,7 @@ public class EmotionParser {
         
         int start = content.indexOf('{');
         int end = content.lastIndexOf('}');
-        if (start < 0) {
-            throw new IllegalArgumentException(MESSAGE_INVALID_JSON);
-        }
-        if (end <= start) {
+        if (start < 0 || end <= start) {
             throw new IllegalArgumentException(MESSAGE_INVALID_JSON);
         }
         

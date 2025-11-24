@@ -1,11 +1,13 @@
 package com.example.backend.service;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
+import com.example.backend.entity.EmotionEntity;
+import com.example.backend.repository.EmotionRepository;
+import com.example.backend.service.emotion.EmotionParser;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -13,102 +15,96 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import com.example.backend.entity.EmotionEntity;
-import com.example.backend.repository.EmotionRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class EmotionService {
-
-    private final EmotionRepository repository;
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper mapper = new ObjectMapper();
-
+    
+    private static final String MESSAGE_MODEL_RESPONSE_PARSING_FAILED = "모델 응답 파싱 실패";
+    
+    private final EmotionRepository emotionRepository;
+    private final RestTemplate restTemplate;
+    private final EmotionParser emotionParser;
+    
     @Value("${openai.api.key}")
     private String apiKey;
-
+    
     @Value("${openai.api.url}")
     private String apiUrl;
-
-    public EmotionService(EmotionRepository repository) {
-        this.repository = repository;
-    }
-
+    
+    @Transactional
     public Map<String, Integer> analyzeText(String email, String text) {
-        // 1. OpenAI 요청 프롬프트
-        String prompt = String.format(
-            "다음 문장을 감정별 비율(%%)로 분석해줘.\n" +
-                "감정 카테고리: happiness, sadness, anger, anxiety, calmness, etc\n" +
-                "문장: \"%s\"\n\n" +
-                "반드시 총합이 100이 되도록 하고,\n" +
-                "JSON만 출력:\n" +
-                "{\"happiness\": 40, \"sadness\": 20, \"anger\": 10, \"anxiety\": 10, \"calmness\": 20, \"etc\": 0}",
-            text
+        String prompt = buildPrompt(text);
+        
+        Map<String, Object> body = Map.of(
+                "model", "gpt-4o-mini",
+                "messages", List.of(Map.of("role", "user", "content", prompt)),
+                "temperature", 0.3,
+                "max_tokens", 200
         );
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("model", "gpt-4o-mini");
-        body.put("messages", List.of(Map.of("role", "user", "content", prompt)));
-        body.put("temperature", 0.3);
-        body.put("max_tokens", 200);
-
+        
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
-
+        
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
-        // 2. OpenAI API 호출
+        
         ResponseEntity<Map> response = restTemplate.exchange(
-            apiUrl,
-            HttpMethod.POST,
-            entity,
-            Map.class
+                apiUrl,
+                HttpMethod.POST,
+                entity,
+                Map.class
         );
-
-        Map<String, Object> resBody = response.getBody();
-
-        // GPT 응답에서 content 추출
-        String content = Optional.ofNullable(
-            ((Map<?, ?>) ((Map<?, ?>) ((List<?>) resBody.get("choices")).get(0)).get("message")).get("content")
-        ).map(Object::toString).orElseThrow(() -> new RuntimeException("모델 응답 파싱 실패"));
-
-        System.out.println("🔍 OpenAI 응답 content = " + content);
-
-        // 3. JSON 파싱 (앞뒤 텍스트 제거 후 JSON만 추출)
-        Map<String, Integer> emotions;
-        try {
-            int start = content.indexOf("{");
-            int end = content.lastIndexOf("}");
-            if (start != -1 && end != -1 && end > start) {
-                String jsonOnly = content.substring(start, end + 1);
-                emotions = mapper.readValue(jsonOnly, new TypeReference<Map<String, Integer>>() {});
-            } else {
-                throw new RuntimeException("유효한 JSON 형식이 아님: " + content);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("감정 JSON 파싱 실패: " + content, e);
-        }
-
-        // 4. DB 저장
-        EmotionEntity entityToSave = EmotionEntity.builder()
-            .userEmail(email)
-            .inputText(text)
-            .happiness(emotions.getOrDefault("happiness", 0))
-            .sadness(emotions.getOrDefault("sadness", 0))
-            .anger(emotions.getOrDefault("anger", 0))
-            .anxiety(emotions.getOrDefault("anxiety", 0))
-            .calmness(emotions.getOrDefault("calmness", 0))
-            .etc(emotions.getOrDefault("etc", 0))
-            .createdAt(LocalDateTime.now())
-            .build();
-
-        repository.save(entityToSave);
-
-        // 5. JSON 그대로 반환
+        
+        Map<String, Object> responseBody = response.getBody();
+        String content = extractContent(responseBody);
+        
+        Map<String, Integer> emotions = emotionParser.parse(content);
+        EmotionEntity entityToSave = emotionParser.toEntity(email, text, emotions);
+        emotionRepository.save(entityToSave);
+        
         return emotions;
+    }
+    
+    private String buildPrompt(String text) {
+        return String.format(
+                "다음 문장을 감정별 비율(%%)로 분석해줘.%n"
+                        + "감정 카테고리: happiness, sadness, anger, anxiety, calmness, etc%n"
+                        + "문장: \"%s\"%n%n"
+                        + "반드시 총합이 100이 되도록 하고,%n"
+                        + "JSON만 출력:%n"
+                        + "{\"happiness\": 40, \"sadness\": 20, \"anger\": 10, \"anxiety\": 10, \"calmness\": 20, \"etc\": 0}",
+                text
+        );
+    }
+    
+    @SuppressWarnings("unchecked")
+    private String extractContent(Map<String, Object> body) {
+        if (body == null) {
+            throw new IllegalStateException(MESSAGE_MODEL_RESPONSE_PARSING_FAILED);
+        }
+        
+        Object choicesObj = body.get("choices");
+        if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) {
+            throw new IllegalStateException(MESSAGE_MODEL_RESPONSE_PARSING_FAILED);
+        }
+        
+        Object first = choices.get(0);
+        if (!(first instanceof Map<?, ?> firstMap)) {
+            throw new IllegalStateException(MESSAGE_MODEL_RESPONSE_PARSING_FAILED);
+        }
+        
+        Object messageObj = firstMap.get("message");
+        if (!(messageObj instanceof Map<?, ?> messageMap)) {
+            throw new IllegalStateException(MESSAGE_MODEL_RESPONSE_PARSING_FAILED);
+        }
+        
+        Object content = messageMap.get("content");
+        return Optional.ofNullable(content)
+                .map(Object::toString)
+                .orElseThrow(() -> new IllegalStateException(MESSAGE_MODEL_RESPONSE_PARSING_FAILED));
     }
 }
