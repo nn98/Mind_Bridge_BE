@@ -2,7 +2,6 @@ package com.example.backend.service;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 
 import com.example.backend.common.error.ForbiddenException;
 import java.time.LocalDateTime;
