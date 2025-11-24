@@ -96,7 +96,7 @@ public class ChatController {
         try {
             List<ChatMessageDto> result =
                     chatService.getMessagesBySessionId(sessionId, authentication.getName());
-            return ResponseEntity.ok(ApiResponse.success(result, "메시지를 성공적으로 조회했습니다."));
+            return ok(result, "메시지를 성공적으로 조회했습니다.");
         } catch (NotFoundException e) {
             throw createSessionNotFoundException();
         } catch (ForbiddenException e) {
@@ -111,9 +111,7 @@ public class ChatController {
             Authentication authentication
     ) {
         return chatService.getSessionById(sessionId)
-                .map(session -> ResponseEntity.ok(
-                        ApiResponse.success(session, "세션을 성공적으로 조회했습니다.")
-                ))
+                .map(session -> ok(session, "세션을 성공적으로 조회했습니다."))
                 .orElseThrow(this::createSessionNotFoundException);
     }
     
@@ -124,7 +122,7 @@ public class ChatController {
             Authentication authentication
     ) {
         chatService.deleteSession(sessionId);
-        return ResponseEntity.ok(ApiResponse.success("세션이 삭제되었습니다."));
+        return ok("세션이 삭제되었습니다.");
     }
     
     private NotFoundException createSessionNotFoundException() {
@@ -133,5 +131,13 @@ public class ChatController {
     
     private ForbiddenException createAccessDeniedException() {
         return new ForbiddenException("세션 접근 권한이 없습니다.", CODE_ACCESS_DENIED);
+    }
+    
+    private <T> ResponseEntity<ApiResponse<T>> ok(T data, String message) {
+        return ResponseEntity.ok(ApiResponse.success(data, message));
+    }
+    
+    private ResponseEntity<ApiResponse<String>> ok(String message) {
+        return ResponseEntity.ok(ApiResponse.success(message));
     }
 }
