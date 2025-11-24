@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 
+import com.example.backend.common.error.ForbiddenException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,6 @@ class ChatServiceTest {
 	@InjectMocks
 	private ChatService chatService;
 
-	// 테스트용 데이터
 	private ChatSessionEntity testSession;
 	private ChatMessageEntity testUserMessage;
 	private ChatMessageEntity testAiMessage;
@@ -266,12 +266,10 @@ class ChatServiceTest {
 		List<ChatSessionEntity> mockEntities = List.of(testSession);
 		List<ChatSessionDto> mockDtos = List.of(testSessionDto);
 
-		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(USER_EMAIL))
-				.thenReturn(mockEntities);
+		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(USER_EMAIL)).thenReturn(mockEntities);
 		when(chatMapper.toSessionDtoList(mockEntities)).thenReturn(mockDtos);
 
-		List<ChatSessionDto> result =
-				chatService.getChatSessionsByUserEmail(USER_EMAIL);
+		List<ChatSessionDto> result = chatService.getChatSessionsByUserEmail(USER_EMAIL);
 
 		assertThat(result).hasSize(1);
 		assertThat(result.get(0).sessionId()).isEqualTo(SESSION_ID);
@@ -286,12 +284,10 @@ class ChatServiceTest {
 	void getChatSessionsByUserEmail_emptyResult_returnsEmptyList() {
 		String unknownEmail = "nonexistent@example.com";
 
-		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(unknownEmail))
-				.thenReturn(List.of());
+		when(chatSessionRepository.findByUserEmailOrderByCreatedAtDesc(unknownEmail)).thenReturn(List.of());
 		when(chatMapper.toSessionDtoList(anyList())).thenReturn(List.of());
 
-		List<ChatSessionDto> result =
-				chatService.getChatSessionsByUserEmail(unknownEmail);
+		List<ChatSessionDto> result = chatService.getChatSessionsByUserEmail(unknownEmail);
 
 		assertThat(result).isEmpty();
 
@@ -300,10 +296,44 @@ class ChatServiceTest {
 	}
 
 	@Test
+	@DisplayName("세션별 메시지 조회 - 권한 없으면 ForbiddenException")
+	void getMessagesBySessionId_withAuth_forbidden() {
+		String otherEmail = "other@example.com";
+
+		when(chatSessionRepository.existsBySessionIdAndUserEmail(SESSION_ID, otherEmail)).thenReturn(false);
+
+		assertThatThrownBy(() -> chatService.getMessagesBySessionId(SESSION_ID, otherEmail))
+				.isInstanceOf(ForbiddenException.class)
+				.hasMessage("세션 접근 권한이 없습니다.");
+
+		verify(chatSessionRepository).existsBySessionIdAndUserEmail(SESSION_ID, otherEmail);
+		verifyNoInteractions(chatMessageRepository, chatMapper);
+	}
+
+	@Test
+	@DisplayName("세션 업데이트 - 다른 이메일이면 ForbiddenException")
+	void updateSession_differentEmail_throwsForbidden() {
+		String otherEmail = "other@example.com";
+		SessionRequest otherUserRequest = SessionRequest.builder()
+				.sessionId(SESSION_ID)
+				.userEmail(otherEmail)
+				.build();
+
+		when(chatSessionRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(testSession));
+
+		assertThatThrownBy(() -> chatService.updateSession(SESSION_ID, otherUserRequest))
+				.isInstanceOf(ForbiddenException.class)
+				.hasMessage("세션 수정 권한이 없습니다.");
+
+		verify(chatSessionRepository).findBySessionId(SESSION_ID);
+		verifyNoMoreInteractions(chatSessionRepository);
+		verifyNoInteractions(chatMapper);
+	}
+
+	@Test
 	@DisplayName("세션 삭제 성공 테스트")
 	void deleteSession_success() {
-		when(chatSessionRepository.findBySessionId(SESSION_ID))
-				.thenReturn(Optional.of(testSession));
+		when(chatSessionRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(testSession));
 
 		chatService.deleteSession(SESSION_ID);
 
@@ -316,8 +346,7 @@ class ChatServiceTest {
 	@DisplayName("세션 삭제 - 세션 없음 예외")
 	void deleteSession_sessionNotFound_throwsException() {
 		String missingId = "non-existent-session";
-		when(chatSessionRepository.findBySessionId(missingId))
-				.thenReturn(Optional.empty());
+		when(chatSessionRepository.findBySessionId(missingId)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> chatService.deleteSession(missingId))
 				.isInstanceOf(NotFoundException.class)
