@@ -1,7 +1,6 @@
 package com.example.backend.controller;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.backend.common.error.ForbiddenException;
 import com.example.backend.common.error.NotFoundException;
 import com.example.backend.dto.chat.ChatMessageDto;
 import com.example.backend.dto.chat.ChatMessageRequest;
@@ -39,9 +37,6 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatController {
     
     private static final String MESSAGE_SESSION_NOT_FOUND = "세션을 찾을 수 없습니다.";
-    private static final String CODE_SESSION_NOT_FOUND = "SESSION_NOT_FOUND";
-    private static final String CODE_ACCESS_DENIED = "ACCESS_DENIED";
-    private static final String FIELD_SESSION_ID = "sessionId";
     
     private final DailyMetricsService dailyMetricsService;
     private final SecurityUtil securityUtil;
@@ -93,15 +88,9 @@ public class ChatController {
             @PathVariable String sessionId,
             Authentication authentication
     ) {
-        try {
-            List<ChatMessageDto> result =
-                    chatService.getMessagesBySessionId(sessionId, authentication.getName());
-            return ok(result, "메시지를 성공적으로 조회했습니다.");
-        } catch (NotFoundException e) {
-            throw createSessionNotFoundException();
-        } catch (ForbiddenException e) {
-            throw createAccessDeniedException();
-        }
+        List<ChatMessageDto> result =
+                chatService.getMessagesBySessionId(sessionId, authentication.getName());
+        return ok(result, "메시지를 성공적으로 조회했습니다.");
     }
     
     @GetMapping("/sessions/{sessionId}")
@@ -110,9 +99,9 @@ public class ChatController {
             @PathVariable String sessionId,
             Authentication authentication
     ) {
-        return chatService.getSessionById(sessionId)
-                .map(session -> ok(session, "세션을 성공적으로 조회했습니다."))
-                .orElseThrow(this::createSessionNotFoundException);
+        ChatSessionDto session = chatService.getSessionById(sessionId)
+                .orElseThrow(() -> new NotFoundException(MESSAGE_SESSION_NOT_FOUND));
+        return ok(session, "세션을 성공적으로 조회했습니다.");
     }
     
     @DeleteMapping("/sessions/{sessionId}")
@@ -123,14 +112,6 @@ public class ChatController {
     ) {
         chatService.deleteSession(sessionId);
         return ok("세션이 삭제되었습니다.");
-    }
-    
-    private NotFoundException createSessionNotFoundException() {
-        return new NotFoundException(MESSAGE_SESSION_NOT_FOUND, CODE_SESSION_NOT_FOUND, FIELD_SESSION_ID);
-    }
-    
-    private ForbiddenException createAccessDeniedException() {
-        return new ForbiddenException("세션 접근 권한이 없습니다.", CODE_ACCESS_DENIED);
     }
     
     private <T> ResponseEntity<ApiResponse<T>> ok(T data, String message) {
