@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -88,5 +89,66 @@ class EmotionServiceTest {
         then(emotionParser).should().parse(content);
         then(emotionParser).should().toEntity(email, text, emotions);
         then(emotionRepository).should().save(entity);
+    }
+    
+    @Test
+    @DisplayName("analyzeText - OpenAI 응답 구조가 잘못되면 예외를 던진다")
+    void analyzeText_invalidOpenAiResponse_throws() {
+        String email = "user@example.com";
+        String text = "텍스트";
+        
+        ReflectionTestUtils.setField(emotionService, "apiKey", "test-key");
+        ReflectionTestUtils.setField(emotionService, "apiUrl", "https://api.test.com");
+        
+        ResponseEntity<Map> response = new ResponseEntity<>(Map.of(), HttpStatus.OK);
+        
+        given(restTemplate.exchange(
+                anyString(),
+                any(HttpMethod.class),
+                any(HttpEntity.class),
+                eq(Map.class)
+        )).willReturn(response);
+        
+        assertThatThrownBy(() -> emotionService.analyzeText(email, text))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("모델 응답 파싱 실패");
+        
+        then(emotionParser).shouldHaveNoInteractions();
+        then(emotionRepository).shouldHaveNoInteractions();
+    }
+    
+    @Test
+    @DisplayName("analyzeText - 파서가 실패하면 그 예외를 그대로 전파한다")
+    void analyzeText_parserFails_propagatesException() {
+        String email = "user@example.com";
+        String text = "텍스트";
+        String content = "invalid json";
+        
+        ReflectionTestUtils.setField(emotionService, "apiKey", "test-key");
+        ReflectionTestUtils.setField(emotionService, "apiUrl", "https://api.test.com");
+        
+        Map<String, Object> responseBody = Map.of(
+                "choices", List.of(
+                        Map.of("message", Map.of("content", content))
+                )
+        );
+        ResponseEntity<Map> response = new ResponseEntity<>(responseBody, HttpStatus.OK);
+        
+        given(restTemplate.exchange(
+                anyString(),
+                any(HttpMethod.class),
+                any(HttpEntity.class),
+                eq(Map.class)
+        )).willReturn(response);
+        
+        given(emotionParser.parse(content))
+                .willThrow(new IllegalArgumentException("invalid emotion json content"));
+        
+        assertThatThrownBy(() -> emotionService.analyzeText(email, text))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("invalid emotion json content");
+        
+        then(emotionParser).should().parse(content);
+        then(emotionRepository).shouldHaveNoInteractions();
     }
 }
